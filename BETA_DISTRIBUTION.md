@@ -50,7 +50,7 @@ The extension identifier is `gmalbert.command-dock`.
 
 ## Upgrade
 
-GitHub-installed VSIX builds do not automatically update. Download and verify the newer pre-release, then install it over the existing version with **Install from VSIX…** or `code --install-extension ... --force`.
+GitHub-installed VSIX builds do not automatically update. Follow the complete [Upgrade CommandDock and Command Code](README.md#upgrade-commanddock-and-command-code) instructions in the main README. That section covers Development Host overrides, forced VSIX installation, exact reload commands, version verification, separate CLI updates, and model-catalog refreshes.
 
 Read the release notes and [CHANGELOG.md](CHANGELOG.md) before upgrading. Copy any important conversation content first; webview transcript state is not a durable backup.
 

@@ -14,16 +14,17 @@ const {
 } = require("./dist/commandcode/security.js");
 const {
   resolveCliInvocation,
-  isVersionCompatible,
   MINIMUM_CLI_VERSION,
 } = require("./dist/commandcode/discovery.js");
+const { classifyCliStatus } = require("./dist/commandcode/status.js");
 const { redactDiagnostic } = require("./dist/commandcode/errors.js");
 const { parseWebviewRequest } = require("./dist/contracts.js");
 const { parseModelList } = require("./dist/commandcode/models.js");
 const { CommandCodeClient } = require("./dist/commandcode/client.js");
 const { validateBranchName } = require("./dist/git.js");
 
-const CLI_PROBE_TIMEOUT_MS = 45_000;
+const CLI_PROBE_TIMEOUT_MS = 60_000;
+const CLI_STATUS_CACHE_MS = 30_000;
 
 class CommandDockViewProvider {
   static viewType = "commandDock.chat";
@@ -50,6 +51,13 @@ class CommandDockViewProvider {
     this.generation = 0;
     this.client = new CommandCodeClient();
     this.probeProcesses = new Set();
+    /** @type {{key: string, checkedAt: number, result: import('./dist/commandcode/status.js').CliStatusResult} | undefined} */
+    this.cliStatusCache = undefined;
+    /** @type {{key: string, promise: Promise<import('./dist/commandcode/status.js').CliStatusResult>} | undefined} */
+    this.cliStatusPromise = undefined;
+    /** @type {{key: string, promise: Promise<void>} | undefined} */
+    this.modelCatalogPromise = undefined;
+    this.turnPending = false;
     this.agentAuthorizedGeneration = undefined;
     this.toolStarts = new Map();
     this.output = vscode.window.createOutputChannel("CommandDock", {
@@ -228,7 +236,7 @@ class CommandDockViewProvider {
           this.openInteractiveSession("/worktree");
           break;
         case "refreshStatus":
-          await this.postBackendStatus();
+          await this.postBackendStatus({ force: true });
           break;
         case "updateCli":
           await this.updateCli();
@@ -337,6 +345,87 @@ class CommandDockViewProvider {
       if (active) this.probeProcesses.add(child);
       else this.probeProcesses.delete(child);
     });
+  }
+
+  clearCliStatusCache() {
+    this.cliStatusCache = undefined;
+  }
+
+  async getCliStatus(invocation, { force = false } = {}) {
+    const key = JSON.stringify([invocation.command, invocation.prefixArgs]);
+    if (this.cliStatusPromise?.key === key)
+      return this.cliStatusPromise.promise;
+    if (
+      !force &&
+      this.cliStatusCache?.key === key &&
+      Date.now() - this.cliStatusCache.checkedAt < CLI_STATUS_CACHE_MS
+    ) {
+      return this.cliStatusCache.result;
+    }
+
+    const promise = this.probeCli(
+      invocation,
+      ["status", "--json", "--no-auto-update"],
+      CLI_PROBE_TIMEOUT_MS,
+    ).then((probe) => classifyCliStatus(probe, MINIMUM_CLI_VERSION));
+    this.cliStatusPromise = { key, promise };
+    try {
+      const result = await promise;
+      if (result.kind === "error") {
+        this.cliStatusCache = undefined;
+        this.log("warn", `CLI status check failed: ${result.message}`);
+      } else {
+        this.cliStatusCache = { key, checkedAt: Date.now(), result };
+      }
+      return result;
+    } finally {
+      if (this.cliStatusPromise?.promise === promise)
+        this.cliStatusPromise = undefined;
+    }
+  }
+
+  async refreshModelCatalog(invocation, version) {
+    const key = JSON.stringify([invocation.command, invocation.prefixArgs]);
+    if (this.modelCatalogPromise?.key === key)
+      return this.modelCatalogPromise.promise;
+    const promise = (async () => {
+      const catalog = await this.probeCli(
+        invocation,
+        ["--list-models", "--no-auto-update"],
+        CLI_PROBE_TIMEOUT_MS,
+      );
+      if (!catalog.ok) {
+        this.log("warn", `Model catalog check failed: ${catalog.error}`);
+        return;
+      }
+      const models = parseModelList(catalog.stdout);
+      if (!models.length) return;
+      this.models = [
+        {
+          id: "auto",
+          label: "Auto",
+          description: "Best available model for the task",
+          provider: "Command Code",
+          capabilities: [],
+        },
+        ...models,
+      ];
+      await this.context.globalState.update("modelCatalog", {
+        version,
+        models: this.models,
+      });
+      this.view?.webview.postMessage({
+        type: "modelCatalog",
+        models: this.models,
+      });
+    })();
+    this.modelCatalogPromise = { key, promise };
+    try {
+      await promise;
+    } finally {
+      if (this.modelCatalogPromise?.promise === promise)
+        this.modelCatalogPromise = undefined;
+    }
   }
 
   diagnostics() {
@@ -448,21 +537,36 @@ class CommandDockViewProvider {
       void vscode.window.showErrorMessage(invocation.displayPath);
       return;
     }
+    const status = await this.getCliStatus(invocation, { force: true });
+    if (status.kind === "ready") {
+      void vscode.window.showInformationMessage(
+        `Command Code ${status.version} is already signed in.`,
+      );
+      await this.postBackendStatus();
+      return;
+    }
+    if (status.kind === "incompatible") {
+      void vscode.window.showErrorMessage(
+        `Update Command Code to ${MINIMUM_CLI_VERSION} or newer before signing in (found ${status.version}).`,
+      );
+      return;
+    }
+    if (status.kind === "error")
+      void vscode.window.showWarningMessage(
+        `${status.message} Opening sign-in in a visible terminal so you can review the result.`,
+      );
 
-    const child = spawn(
-      invocation.command,
-      [...invocation.prefixArgs, "login"],
-      {
-        windowsHide: true,
-        shell: false,
-        detached: true,
-        stdio: "ignore",
-        env: createInvocationEnvironment(invocation),
-      },
-    );
-    child.unref();
+    const terminal = vscode.window.createTerminal({
+      name: "Command Code Sign In",
+      shellPath: invocation.command,
+      shellArgs: [...invocation.prefixArgs, "login"],
+      cwd: os.homedir(),
+      env: createInvocationEnvironment(invocation),
+    });
+    this.refreshAfterTerminalCloses(terminal);
+    terminal.show();
     void vscode.window.showInformationMessage(
-      "Command Code sign-in opened. Return here after completing it.",
+      "Command Code sign-in opened in a terminal. Complete any instructions shown there.",
     );
   }
 
@@ -485,10 +589,21 @@ class CommandDockViewProvider {
       cwd: os.homedir(),
       env: createInvocationEnvironment(invocation),
     });
+    this.refreshAfterTerminalCloses(terminal);
     terminal.show();
     void vscode.window.showInformationMessage(
       "Command Code updater opened. When it finishes, reload VS Code or run “CommandDock: Refresh Backend Status” to reload the model catalog.",
     );
+  }
+
+  refreshAfterTerminalCloses(terminal) {
+    const subscription = vscode.window.onDidCloseTerminal((closed) => {
+      if (closed !== terminal) return;
+      subscription.dispose();
+      this.clearCliStatusCache();
+      void this.postBackendStatus({ force: true });
+    });
+    this.context.subscriptions.push(subscription);
   }
 
   openCliSurface(args = []) {
@@ -928,75 +1043,41 @@ class CommandDockViewProvider {
     }
   }
 
-  async postBackendStatus() {
+  async postBackendStatus({ force = false } = {}) {
     const invocation = this.resolveCliInvocation();
     if (invocation.detected !== false) {
-      const version = await this.probeCli(
-        invocation,
-        ["--version", "--no-auto-update"],
-        CLI_PROBE_TIMEOUT_MS,
-      );
-      if (!version.ok) {
+      const status = await this.getCliStatus(invocation, { force });
+      if (status.kind === "error") {
         this.view?.webview.postMessage({
           type: "backendStatus",
-          status: "missing",
-          label: version.error,
+          status: "error",
+          label: status.message,
         });
         return;
       }
-      if (!isVersionCompatible(version.stdout, MINIMUM_CLI_VERSION)) {
+      if (status.kind === "incompatible") {
         this.view?.webview.postMessage({
           type: "backendStatus",
           status: "incompatible",
-          label: `Update Command Code to ${MINIMUM_CLI_VERSION} or newer (found ${version.stdout.trim() || "unknown"}).`,
+          label: `Update Command Code to ${MINIMUM_CLI_VERSION} or newer (found ${status.version}).`,
         });
         return;
       }
-      const status = await this.probeCli(
-        invocation,
-        ["status", "--json", "--no-auto-update"],
-        CLI_PROBE_TIMEOUT_MS,
-      );
-      const signedOut =
-        !status.ok ||
-        /not logged|signed out|unauthenticated|login required/i.test(
-          `${status.stdout}\n${status.stderr}`,
-        );
+      if (status.kind === "signed-out") {
+        this.view?.webview.postMessage({
+          type: "backendStatus",
+          status: "signed-out",
+          label: "Command Code sign-in required",
+        });
+        return;
+      }
       this.view?.webview.postMessage({
         type: "backendStatus",
-        status: signedOut ? "signed-out" : "ready",
-        label: signedOut
-          ? "Command Code sign-in required"
-          : `Command Code ${version.stdout.trim()} ready`,
+        status: "ready",
+        label: `Command Code ${status.version} ready`,
       });
-      const catalog = await this.probeCli(
-        invocation,
-        ["--list-models", "--no-auto-update"],
-        CLI_PROBE_TIMEOUT_MS,
-      );
-      if (catalog.ok) {
-        const models = parseModelList(catalog.stdout);
-        if (models.length) {
-          this.models = [
-            {
-              id: "auto",
-              label: "Auto",
-              description: "Best available model for the task",
-              provider: "Command Code",
-              capabilities: [],
-            },
-            ...models,
-          ];
-          await this.context.globalState.update("modelCatalog", {
-            version: version.stdout.trim(),
-            models: this.models,
-          });
-          this.view?.webview.postMessage({
-            type: "modelCatalog",
-            models: this.models,
-          });
-        }
-      }
+      if (this.turnPending || this.activeProcess) return;
+      await this.refreshModelCatalog(invocation, status.version);
       return;
     }
     this.view?.webview.postMessage({
@@ -1130,7 +1211,16 @@ class CommandDockViewProvider {
 
   async runCommandCodeTurn(text, requestedModel, effort) {
     if (!this.view || !text?.trim() || this.activeProcess) return;
+    this.turnPending = true;
+    try {
+      await this.runCommandCodeTurnCore(text, requestedModel, effort);
+    } finally {
+      this.turnPending = false;
+      if (!this.activeProcess) void this.postBackendStatus();
+    }
+  }
 
+  async runCommandCodeTurnCore(text, requestedModel, effort) {
     if (!vscode.workspace.isTrusted) {
       this.view.webview.postMessage({
         type: "turnError",
@@ -1184,34 +1274,23 @@ class CommandDockViewProvider {
       );
     }
 
-    const version = await this.probeCli(
-      invocation,
-      ["--version", "--no-auto-update"],
-      CLI_PROBE_TIMEOUT_MS,
-    );
-    if (
-      !version.ok ||
-      !isVersionCompatible(version.stdout, MINIMUM_CLI_VERSION)
-    ) {
+    const cliStatus = await this.getCliStatus(invocation);
+    if (cliStatus.kind === "error") {
       send({
         type: "turnError",
-        message: version.ok
-          ? `Command Code ${version.stdout.trim() || "unknown"} is incompatible. Update to ${MINIMUM_CLI_VERSION} or newer.`
-          : `Could not verify the Command Code CLI: ${version.error}`,
+        message: `Could not verify the Command Code CLI: ${cliStatus.message}`,
       });
       return;
     }
-    const auth = await this.probeCli(
-      invocation,
-      ["status", "--json", "--no-auto-update"],
-      CLI_PROBE_TIMEOUT_MS,
-    );
-    if (
-      !auth.ok ||
-      /not logged|signed out|unauthenticated|login required/i.test(
-        `${auth.stdout}\n${auth.stderr}`,
-      )
-    ) {
+    if (cliStatus.kind === "incompatible") {
+      send({
+        type: "turnError",
+        message: `Command Code ${cliStatus.version} is incompatible. Update to ${MINIMUM_CLI_VERSION} or newer.`,
+        action: "upgrade",
+      });
+      return;
+    }
+    if (cliStatus.kind === "signed-out") {
       send({
         type: "turnError",
         message: "Sign in to Command Code before sending a request.",
@@ -1721,7 +1800,7 @@ function probeCli(invocation, args, timeoutMs, trackProcess) {
         ok: false,
         stdout,
         stderr,
-        error: "Command Code status check timed out.",
+        error: `Command Code ${describeCliProbe(args)} timed out.`,
       });
     }, timeoutMs);
     child.stdout.setEncoding("utf8");
@@ -1748,6 +1827,13 @@ function probeCli(invocation, args, timeoutMs, trackProcess) {
       }),
     );
   });
+}
+
+function describeCliProbe(args) {
+  if (args.includes("status")) return "status check";
+  if (args.includes("--list-models")) return "model catalog check";
+  if (args.includes("--version")) return "version check";
+  return "check";
 }
 
 function probeProcess(command, args, cwd, timeoutMs) {
@@ -2198,7 +2284,7 @@ function activate(context) {
       vscode.env.openExternal(vscode.Uri.parse("https://commandcode.ai/terms")),
     ),
     vscode.commands.registerCommand("commandDock.refreshStatus", () =>
-      provider.postBackendStatus(),
+      provider.postBackendStatus({ force: true }),
     ),
     vscode.commands.registerCommand("commandDock.updateCli", () =>
       provider.updateCli(),

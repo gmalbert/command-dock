@@ -32,6 +32,9 @@
 html,
 body {
   height: 100%;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
 }
 
 body {
@@ -59,11 +62,16 @@ input:focus-visible {
 
 .shell {
   height: 100vh;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   display: grid;
   grid-template-rows: 48px minmax(0, 1fr) auto;
+  overflow: hidden;
 }
 
 .topbar {
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -72,6 +80,7 @@ input:focus-visible {
 }
 
 .brand {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -98,11 +107,13 @@ input:focus-visible {
   opacity: 1;
   box-shadow: 0 0 0 2px color-mix(in srgb, #6fdc8c 14%, transparent);
 }
-.backend-pill.missing {
+.backend-pill.missing,
+.backend-pill.error {
   background: var(--vscode-errorForeground);
   opacity: 1;
 }
 .top-actions {
+  flex: 0 0 auto;
   display: flex;
   gap: 2px;
 }
@@ -144,11 +155,17 @@ svg {
 }
 
 .conversation {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: auto;
   scrollbar-width: thin;
 }
 
 .welcome {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 100%;
   display: flex;
   flex-direction: column;
@@ -189,10 +206,14 @@ h1 {
   max-width: 300px;
 }
 .suggestions {
+  width: 100%;
+  min-width: 0;
   display: grid;
   gap: 7px;
 }
 .suggestion {
+  width: 100%;
+  min-width: 0;
   display: grid;
   grid-template-columns: 30px 1fr 16px;
   gap: 10px;
@@ -225,6 +246,9 @@ h1 {
 .suggestion small {
   display: block;
 }
+.suggestion > span:nth-child(2) {
+  min-width: 0;
+}
 .suggestion strong {
   font-size: 12.5px;
   font-weight: 560;
@@ -243,6 +267,8 @@ h1 {
 }
 
 .messages {
+  min-width: 0;
+  max-width: 100%;
   padding: 18px 14px 28px;
 }
 .message {
@@ -545,6 +571,9 @@ h1 {
 
 .composer-wrap {
   position: relative;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   padding: 0 10px 10px;
   background: linear-gradient(
     transparent,
@@ -560,6 +589,7 @@ h1 {
   overflow: hidden;
 }
 .context-chip {
+  min-width: 0;
   max-width: 100%;
   display: flex;
   align-items: center;
@@ -604,6 +634,9 @@ h1 {
   opacity: 0.6;
 }
 .composer {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid
     color-mix(
       in srgb,
@@ -630,6 +663,8 @@ h1 {
 textarea {
   display: block;
   width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 49px;
   max-height: 160px;
   resize: none;
@@ -688,18 +723,25 @@ textarea::placeholder {
   color: var(--cc-muted);
 }
 .composer-footer {
+  width: 100%;
+  min-width: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 2px;
   padding: 5px 6px 6px 7px;
 }
 .composer-options {
+  flex: 1 1 auto;
   display: flex;
   gap: 2px;
   align-items: center;
   min-width: 0;
+  overflow: hidden;
 }
 .quiet-button {
+  min-width: 0;
+  flex: 0 1 auto;
   height: 26px;
   padding: 0 7px;
   display: flex;
@@ -714,9 +756,12 @@ textarea::placeholder {
   height: 13px;
 }
 .effort-control {
+  flex: 0 1 76px;
   padding: 0 3px;
 }
 .effort-control select {
+  width: 100%;
+  min-width: 0;
   max-width: 76px;
   border: 0;
   outline: 0;
@@ -730,6 +775,7 @@ textarea::placeholder {
   background: var(--vscode-dropdown-background);
 }
 .model-dot {
+  flex: 0 0 auto;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -875,9 +921,21 @@ textarea::placeholder {
   display: none;
 }
 .chevron {
+  flex: 0 0 auto;
   width: 10px !important;
 }
+.model-button {
+  flex: 1 1 92px;
+  overflow: hidden;
+}
+.model-button #model-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .send-button {
+  flex: 0 0 28px;
   width: 28px;
   height: 28px;
   display: grid;
@@ -957,14 +1015,44 @@ textarea::placeholder {
   background: #6fdc8c;
 }
 
-@media (max-width: 260px) {
+@media (max-width: 360px) {
+  .welcome {
+    padding-inline: 12px;
+  }
+  .messages {
+    padding-inline: 10px;
+  }
+  .composer-wrap {
+    padding-inline: 6px;
+  }
+  .model-popover {
+    left: 6px;
+    width: calc(100% - 12px);
+  }
+  .slash-popover {
+    left: 6px;
+    right: 6px;
+  }
+  .quiet-button {
+    padding-inline: 4px;
+  }
+  #add-context span,
+  .meta-row span:last-child,
+  .scope {
+    display: none;
+  }
+  .effort-control {
+    flex-basis: 62px;
+  }
+}
+
+@media (max-width: 280px) {
   .suggestion {
     grid-template-columns: 28px 1fr;
   }
   .row-arrow,
-  .quiet-button span,
-  .meta-row span:last-child,
-  .scope {
+  #permission-mode span,
+  .model-button #model-label {
     display: none;
   }
   .summary {

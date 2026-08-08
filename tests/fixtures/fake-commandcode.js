@@ -7,7 +7,13 @@ if (args.includes("--version")) {
   process.exit(0);
 }
 if (args[0] === "status") {
-  console.log("Signed in as test@example.invalid");
+  console.log(
+    JSON.stringify({
+      authenticated: true,
+      version: "1.15.0",
+      user: "test@example.invalid",
+    }),
+  );
   process.exit(0);
 }
 if (args.includes("--list-models")) {

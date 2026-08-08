@@ -29,6 +29,50 @@ test("explicit project trust handoff lives in the run path, not sign-in", () => 
   );
 });
 
+test("sign-in verifies structured status and uses a visible terminal", () => {
+  const signIn = host.slice(
+    host.indexOf("async signIn()"),
+    host.indexOf("async updateCli()"),
+  );
+  assert.match(signIn, /getCliStatus\(invocation, \{ force: true \}\)/);
+  assert.match(signIn, /status\.kind === ["']ready["']/);
+  assert.match(signIn, /already signed in/);
+  assert.match(signIn, /createTerminal/);
+  assert.match(
+    signIn,
+    /shellArgs: \[\.\.\.invocation\.prefixArgs, ["']login["']\]/,
+  );
+  assert.doesNotMatch(signIn, /stdio: ["']ignore["']/);
+  assert.doesNotMatch(signIn, /child\.unref/);
+});
+
+test("turn preflight shares structured status and preserves non-auth errors", () => {
+  const run = host.slice(
+    host.indexOf("async runCommandCodeTurnCore"),
+    host.indexOf("handleAgentEvent"),
+  );
+  assert.match(run, /getCliStatus\(invocation\)/);
+  assert.match(run, /cliStatus\.kind === ["']error["']/);
+  assert.match(run, /cliStatus\.kind === ["']signed-out["']/);
+  assert.doesNotMatch(run, /\["--version", "--no-auto-update"\]/);
+});
+
+test("backend status and model probes are single-flight", () => {
+  const statusStart = host.indexOf("async getCliStatus");
+  const status = host.slice(
+    statusStart,
+    host.indexOf("diagnostics()", statusStart),
+  );
+  const backend = host.slice(
+    host.indexOf("async postBackendStatus"),
+    host.indexOf("async getGitRepository"),
+  );
+  assert.match(status, /this\.cliStatusPromise\?\.key === key/);
+  assert.match(status, /this\.modelCatalogPromise\?\.key === key/);
+  assert.match(backend, /this\.turnPending \|\| this\.activeProcess/);
+  assert.match(backend, /refreshModelCatalog\(invocation, status\.version\)/);
+});
+
 test("agent authorization is per turn and reset after completion", () => {
   const run = host.slice(
     host.indexOf("async runCommandCodeTurn"),
