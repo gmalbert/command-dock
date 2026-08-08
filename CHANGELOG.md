@@ -4,6 +4,8 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+## [0.1.2-beta.1] - 2026-08-08
+
 ### Fixed
 
 - Keep the welcome content, suggestions, and composer within narrow VS Code sidebar widths instead of allowing minimum-content overflow to clip the left edge.
