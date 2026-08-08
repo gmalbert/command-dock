@@ -42,7 +42,7 @@ See the [Command Code quickstart](https://commandcode.ai/docs/quickstart) for ot
 2. Download `command-dock-<version>.vsix` and its `.sha256` checksum.
 3. Optionally verify the checksum with `Get-FileHash` on Windows or `sha256sum` on macOS/Linux.
 4. In VS Code, open **Extensions**, select the `…` menu, choose **Install from VSIX…**, and select the download.
-5. Reload VS Code when prompted.
+5. Open the Command Palette with `Ctrl+Shift+P` and run **Developer: Reload Window**. This reloads the extension host and activates the newly installed version.
 
 You can also install from a terminal:
 
@@ -51,6 +51,29 @@ code --install-extension command-dock-<version>.vsix
 ```
 
 GitHub beta installations do not update automatically. Download and install each newer pre-release manually. See [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md) for verification, upgrades, and removal.
+
+### Upgrading CommandDock and Command Code
+
+CommandDock and the Command Code CLI are separate installations. Installing a newer CommandDock VSIX updates only the VS Code interface; it does not update the Command Code CLI.
+
+To upgrade CommandDock during the GitHub beta:
+
+1. Use a normal VS Code window. An **Extension Development Host** window runs the development checkout, which overrides an installed VSIX.
+2. Download the newer `command-dock-<version>.vsix` from the [releases page](https://github.com/gmalbert/command-dock/releases).
+3. Choose **Extensions → … → Install from VSIX…** and select the file. VS Code replaces the older installed version; uninstalling first is unnecessary.
+4. If VS Code does not replace it, run `code --install-extension command-dock-<version>.vsix --force` from the folder containing the download.
+5. Open the Command Palette with `Ctrl+Shift+P` and run **Developer: Reload Window**. This is the required reload step—not merely closing the CommandDock view.
+6. Open CommandDock's extension details and confirm that the displayed version matches the downloaded release.
+
+To update the separate Command Code CLI:
+
+1. Open the Command Palette and run **CommandDock: Update Command Code CLI**. You can also use the download button in the CommandDock view title or enter `/update`.
+2. Confirm **Open Updater**. CommandDock runs the official updater in a visible terminal and never updates the CLI silently.
+3. Wait for the updater terminal to finish.
+4. Open the Command Palette and run **Developer: Reload Window**.
+5. Run **CommandDock: Refresh Backend Status** and allow up to 45 seconds for a cold CLI startup and model-catalog refresh.
+
+If the CommandDock updater action is unavailable, run `commandcode update` in a terminal, then perform steps 4 and 5 above.
 
 ## Getting started
 
@@ -157,9 +180,9 @@ The extension also checks standard npm, user-local, Homebrew, and `PATH` locatio
 
 **A turn stopped:** review the inline error. Startup, inactivity, and total-run timeouts intentionally terminate the complete process tree. Copy redacted diagnostics before opening a support request.
 
-**Model unavailable:** refresh the view after `cmd update`. The picker caches the last valid catalog by CLI version and replaces stale choices when the current catalog loads.
+**Model unavailable:** run **CommandDock: Refresh Backend Status** after updating the CLI and allow up to 45 seconds for a cold startup. The picker caches the last valid catalog by CLI version and replaces stale choices when the current catalog loads.
 
-**Update the Command Code CLI:** run **CommandDock: Update Command Code CLI** from the Command Palette, use the download button in the CommandDock view title, or enter `/update`. CommandDock asks for confirmation and opens the official updater in a visible terminal; it never updates the CLI silently. Refresh the backend or reload VS Code after the updater finishes.
+**Update the Command Code CLI:** run **CommandDock: Update Command Code CLI** from the Command Palette, use the download button in the CommandDock view title, or enter `/update`. CommandDock asks for confirmation and opens the official updater in a visible terminal; it never updates the CLI silently. After it finishes, run **Developer: Reload Window**, then **CommandDock: Refresh Backend Status**.
 
 For help, see [SUPPORT.md](SUPPORT.md). Report security issues using [SECURITY.md](SECURITY.md).
 Protocol and preview constraints are listed in [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).
