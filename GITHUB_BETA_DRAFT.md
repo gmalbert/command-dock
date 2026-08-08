@@ -2,11 +2,15 @@
 
 ## Release title
 
-CommandDock 0.1.0 beta 1
+CommandDock 0.1.1 beta 1
 
 ## Summary
 
-CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This first beta provides a dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and per-turn Agent authorization.
+CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This beta fixes installed-extension CLI startup and model discovery on Windows while retaining the dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and per-turn Agent authorization.
+
+The model catalog now allows for Command Code's cold-start time, disables background update checks during probes, and launches JavaScript CLI entry points correctly from VS Code's Electron extension host.
+
+CommandDock can also open the official Command Code updater in a visible terminal after explicit confirmation. It never updates the CLI silently.
 
 CommandDock is not affiliated with, endorsed by, sponsored by, or published by Command Code.
 

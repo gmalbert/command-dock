@@ -28,6 +28,7 @@ export type WebviewRequest =
         | "rewindSession"
         | "manageWorktrees"
         | "refreshStatus"
+        | "updateCli"
         | "previewContext";
     }
   | { type: "selectModel"; model: string }
@@ -73,6 +74,7 @@ export function parseWebviewRequest(
     "rewindSession",
     "manageWorktrees",
     "refreshStatus",
+    "updateCli",
     "previewContext",
   ]);
   if (simple.has(value.type)) return { type: value.type } as WebviewRequest;

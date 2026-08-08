@@ -124,14 +124,15 @@ def check_release_workflow() -> None:
         "sha256sum",
         "gh release create",
         "--prerelease",
-        "command-dock-0.1.0.vsix",
+        "command-dock-*.vsix",
+        "--code-version",
     ):
         if phrase not in release:
             fail(f"Release workflow is missing: {phrase}")
     for forbidden in ("azure/login", "--azure-credential", "vsce publish"):
         if forbidden in release:
             fail(f"GitHub beta workflow must not publish to Marketplace: {forbidden}")
-    if "xvfb-run -a npm run test:integration" not in ci:
+    if "xvfb-run -a npm run test:integration" not in ci or "--code-version" not in ci:
         fail("Linux extension-host CI must run under xvfb")
 
 

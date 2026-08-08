@@ -65,3 +65,11 @@ test("CLI environment keeps runtime essentials and drops unrelated secrets", () 
   assert.equal(env.DATABASE_PASSWORD, undefined);
   assert.equal(env.NO_COLOR, "1");
 });
+
+test("CLI environment can run a discovered script through VS Code's Electron runtime", () => {
+  const env = createCliEnvironment(
+    { PATH: "/bin", ELECTRON_RUN_AS_NODE: "untrusted-input" },
+    { electronRunAsNode: true },
+  );
+  assert.equal(env.ELECTRON_RUN_AS_NODE, "1");
+});

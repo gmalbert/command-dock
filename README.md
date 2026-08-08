@@ -47,7 +47,7 @@ See the [Command Code quickstart](https://commandcode.ai/docs/quickstart) for ot
 You can also install from a terminal:
 
 ```sh
-code --install-extension command-dock-0.1.0.vsix
+code --install-extension command-dock-<version>.vsix
 ```
 
 GitHub beta installations do not update automatically. Download and install each newer pre-release manually. See [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md) for verification, upgrades, and removal.
@@ -158,6 +158,8 @@ The extension also checks standard npm, user-local, Homebrew, and `PATH` locatio
 **A turn stopped:** review the inline error. Startup, inactivity, and total-run timeouts intentionally terminate the complete process tree. Copy redacted diagnostics before opening a support request.
 
 **Model unavailable:** refresh the view after `cmd update`. The picker caches the last valid catalog by CLI version and replaces stale choices when the current catalog loads.
+
+**Update the Command Code CLI:** run **CommandDock: Update Command Code CLI** from the Command Palette, use the download button in the CommandDock view title, or enter `/update`. CommandDock asks for confirmation and opens the official updater in a visible terminal; it never updates the CLI silently. Refresh the backend or reload VS Code after the updater finishes.
 
 For help, see [SUPPORT.md](SUPPORT.md). Report security issues using [SECURITY.md](SECURITY.md).
 Protocol and preview constraints are listed in [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md).

@@ -24,14 +24,14 @@ Verify the download before installing it.
 PowerShell:
 
 ```powershell
-Get-FileHash -Algorithm SHA256 .\command-dock-0.1.0.vsix
-Get-Content .\command-dock-0.1.0.vsix.sha256
+Get-FileHash -Algorithm SHA256 .\command-dock-<version>.vsix
+Get-Content .\command-dock-<version>.vsix.sha256
 ```
 
 macOS or Linux:
 
 ```sh
-sha256sum -c command-dock-0.1.0.vsix.sha256
+sha256sum -c command-dock-<version>.vsix.sha256
 ```
 
 The calculated hash must exactly match the checksum. Do not install an artifact obtained from an issue attachment, chat message, mirror, or unofficial fork unless you independently reviewed and built that source.
@@ -43,7 +43,7 @@ In VS Code, open **Extensions**, select the `…` menu, choose **Install from VS
 Alternatively:
 
 ```sh
-code --install-extension command-dock-0.1.0.vsix
+code --install-extension command-dock-<version>.vsix
 ```
 
 The extension identifier is `gmalbert.command-dock`.

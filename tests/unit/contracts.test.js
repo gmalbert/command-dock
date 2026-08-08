@@ -6,6 +6,9 @@ test("accepts only known, bounded webview requests", () => {
   assert.deepEqual(parseWebviewRequest({ type: "ready", unexpected: true }), {
     type: "ready",
   });
+  assert.deepEqual(parseWebviewRequest({ type: "updateCli" }), {
+    type: "updateCli",
+  });
   assert.deepEqual(
     parseWebviewRequest({
       type: "prompt",

@@ -497,6 +497,7 @@ function submit(text = prompt.value) {
       "/rewind": "rewindSession",
       "/worktree": "manageWorktrees",
       "/status": "refreshStatus",
+      "/update": "updateCli",
     };
     if (surfaces[command]) {
       vscode.postMessage({ type: surfaces[command] });
@@ -514,7 +515,7 @@ function submit(text = prompt.value) {
       vscode.postMessage({ type: "setAnalyze" });
     } else {
       addLocalError(
-        `Unknown or incomplete command: ${command}. Try /plan, /review, /model, /sessions, /fork, /rename, /rewind, /worktree, /skills, /mcp, /mods, /memory, /taste, or /status.`,
+        `Unknown or incomplete command: ${command}. Try /plan, /review, /model, /sessions, /fork, /rename, /rewind, /worktree, /skills, /mcp, /mods, /memory, /taste, /status, or /update.`,
       );
       return;
     }
