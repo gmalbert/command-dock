@@ -4,6 +4,11 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+### Fixed
+
+- Keep the welcome content, suggestions, and composer within narrow VS Code sidebar widths instead of allowing minimum-content overflow to clip the left edge.
+- Reuse one structured CLI status check per startup, distinguish timeouts from authentication failures, and open sign-in in a visible terminal only when the account is not already authenticated.
+
 ## [0.1.1-beta.1] - 2026-08-08
 
 ### Fixed

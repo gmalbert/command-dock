@@ -50,30 +50,58 @@ You can also install from a terminal:
 code --install-extension command-dock-<version>.vsix
 ```
 
-GitHub beta installations do not update automatically. Download and install each newer pre-release manually. See [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md) for verification, upgrades, and removal.
+GitHub beta installations do not update automatically. Download and install each newer pre-release manually. See [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md) for checksum verification, removal, and beta-testing notes.
 
-### Upgrading CommandDock and Command Code
+## Upgrade CommandDock and Command Code
 
-CommandDock and the Command Code CLI are separate installations. Installing a newer CommandDock VSIX updates only the VS Code interface; it does not update the Command Code CLI.
+CommandDock and the Command Code CLI are separate installations and must be upgraded separately:
 
-To upgrade CommandDock during the GitHub beta:
+- Installing a newer CommandDock VSIX updates only the VS Code interface.
+- Updating the Command Code CLI updates the separate backend, not the CommandDock extension.
+- Uninstalling CommandDock first is unnecessary and does not update the CLI.
+
+### Upgrade the CommandDock extension
 
 1. Use a normal VS Code window. An **Extension Development Host** window runs the development checkout, which overrides an installed VSIX.
-2. Download the newer `command-dock-<version>.vsix` from the [releases page](https://github.com/gmalbert/command-dock/releases).
-3. Choose **Extensions → … → Install from VSIX…** and select the file. VS Code replaces the older installed version; uninstalling first is unnecessary.
-4. If VS Code does not replace it, run `code --install-extension command-dock-<version>.vsix --force` from the folder containing the download.
-5. Open the Command Palette with `Ctrl+Shift+P` and run **Developer: Reload Window**. This is the required reload step—not merely closing the CommandDock view.
-6. Open CommandDock's extension details and confirm that the displayed version matches the downloaded release.
+2. If the title bar says **Extension Development Host**, stop the `F5` debugging session and close that window. Continue in an ordinary VS Code window.
+3. Download the newer `command-dock-<version>.vsix` and checksum from the [releases page](https://github.com/gmalbert/command-dock/releases).
+4. In VS Code, choose **Extensions → … → Install from VSIX…** and select the downloaded VSIX. VS Code should replace the older installed version.
+5. If VS Code does not replace it, open a terminal in the download folder and force the installation:
 
-To update the separate Command Code CLI:
+   ```sh
+   code --install-extension command-dock-<version>.vsix --force
+   ```
+
+6. Open the Command Palette with `Ctrl+Shift+P` and run **Developer: Reload Window**. This exact command reloads the extension host; closing only the CommandDock view is not enough.
+7. Open CommandDock's Extensions details page and confirm that its displayed version matches the release you downloaded.
+8. You can also verify the registered version from a terminal:
+
+   ```sh
+   code --list-extensions --show-versions
+   ```
+
+   Look for `gmalbert.command-dock@<version>` in the output. If the correct version is installed but the old interface remains, confirm again that you are not looking at an Extension Development Host, then run **Developer: Reload Window** in the normal window.
+
+### Update the Command Code CLI
 
 1. Open the Command Palette and run **CommandDock: Update Command Code CLI**. You can also use the download button in the CommandDock view title or enter `/update`.
 2. Confirm **Open Updater**. CommandDock runs the official updater in a visible terminal and never updates the CLI silently.
 3. Wait for the updater terminal to finish.
 4. Open the Command Palette and run **Developer: Reload Window**.
-5. Run **CommandDock: Refresh Backend Status** and allow up to 45 seconds for a cold CLI startup and model-catalog refresh.
+5. Run **CommandDock: Refresh Backend Status** and allow up to 60 seconds for a cold CLI startup and model-catalog refresh.
+6. Verify the installed CLI version if needed:
 
-If the CommandDock updater action is unavailable, run `commandcode update` in a terminal, then perform steps 4 and 5 above.
+   ```sh
+   commandcode --version --no-auto-update
+   ```
+
+If **CommandDock: Update Command Code CLI** is unavailable, update it directly:
+
+```sh
+commandcode update
+```
+
+After the direct update finishes, run **Developer: Reload Window**, then **CommandDock: Refresh Backend Status**. Reinstalling the CommandDock VSIX will not perform this CLI update.
 
 ## Getting started
 

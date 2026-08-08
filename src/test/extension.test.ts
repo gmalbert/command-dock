@@ -72,6 +72,30 @@ suite("CommandDock extension", () => {
     });
   });
 
+  test("Sign In does not open a terminal for an authenticated CLI", async () => {
+    const configuration = vscode.workspace.getConfiguration("commandDock");
+    const fixture = path.resolve(
+      __dirname,
+      "../../tests/fixtures/fake-commandcode.js",
+    );
+    await configuration.update(
+      "cliPath",
+      fixture,
+      vscode.ConfigurationTarget.Global,
+    );
+    const terminalCount = vscode.window.terminals.length;
+    try {
+      await vscode.commands.executeCommand("commandDock.signIn");
+      assert.equal(vscode.window.terminals.length, terminalCount);
+    } finally {
+      await configuration.update(
+        "cliPath",
+        undefined,
+        vscode.ConfigurationTarget.Global,
+      );
+    }
+  });
+
   test("missing CLI configuration has a safe, actionable status path", async () => {
     const configuration = vscode.workspace.getConfiguration("commandDock");
     const missing = path.join(os.tmpdir(), "missing-commandcode-cli.mjs");
