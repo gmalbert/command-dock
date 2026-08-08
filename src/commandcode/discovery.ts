@@ -45,7 +45,13 @@ export function resolveCliInvocation(
     options.homeDir ?? os.homedir(),
   )) {
     if (exists(candidate))
-      return invocationForFile(candidate, "known-install", realpath, false);
+      return invocationForFile(
+        candidate,
+        "known-install",
+        realpath,
+        false,
+        platform,
+      );
   }
 
   return {
@@ -60,7 +66,7 @@ export function invocationForTrustedOverride(
   configured: string,
   options: Pick<Required<DiscoveryOptions>, "platform" | "exists" | "realpath">,
 ): CliInvocation {
-  if (!path.isAbsolute(configured))
+  if (!pathForPlatform(options.platform).isAbsolute(configured))
     throw new Error("The CommandCode CLI override must be an absolute path.");
   if (!options.exists(configured))
     throw new Error("The configured CommandCode CLI path does not exist.");
@@ -73,7 +79,13 @@ export function invocationForTrustedOverride(
       "The configured CommandCode CLI path must not be a symbolic link.",
     );
   }
-  return invocationForFile(resolved, "setting", options.realpath, true);
+  return invocationForFile(
+    resolved,
+    "setting",
+    options.realpath,
+    true,
+    options.platform,
+  );
 }
 
 function invocationForFile(
@@ -81,9 +93,10 @@ function invocationForFile(
   source: CliInvocation["source"],
   realpath: (value: string) => string,
   alreadyResolved: boolean,
+  platform: NodeJS.Platform,
 ): CliInvocation {
   const resolved = alreadyResolved ? candidate : realpath(candidate);
-  const extension = path.extname(resolved).toLowerCase();
+  const extension = pathForPlatform(platform).extname(resolved).toLowerCase();
   if (SCRIPT_EXTENSIONS.has(extension)) {
     return {
       command: process.execPath,
@@ -148,6 +161,10 @@ export function isVersionCompatible(
 }
 
 function normalizePath(value: string, platform: NodeJS.Platform): string {
-  const normalized = path.normalize(value);
+  const normalized = pathForPlatform(platform).normalize(value);
   return platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function pathForPlatform(platform: NodeJS.Platform): path.PlatformPath {
+  return platform === "win32" ? path.win32 : path.posix;
 }

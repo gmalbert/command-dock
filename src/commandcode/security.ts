@@ -45,7 +45,7 @@ export function buildRunArguments(options: RunArguments): string[] {
 }
 
 export function normalizeRelativeContextPath(value: string): string {
-  if (!value || path.isAbsolute(value))
+  if (!value || path.posix.isAbsolute(value) || path.win32.isAbsolute(value))
     throw new Error("Context paths must be relative to the workspace.");
   const normalized = value.replaceAll("\\", "/");
   if (
@@ -59,10 +59,12 @@ export function normalizeRelativeContextPath(value: string): string {
 }
 
 export function isTrustedCliPath(value: string): boolean {
-  if (!path.isAbsolute(value)) return false;
-  return [".js", ".cjs", ".mjs", ".exe"].includes(
-    path.extname(value).toLowerCase(),
-  );
+  const isWindowsPath = path.win32.isAbsolute(value);
+  if (!isWindowsPath && !path.posix.isAbsolute(value)) return false;
+  const extension = (isWindowsPath ? path.win32 : path.posix)
+    .extname(value)
+    .toLowerCase();
+  return [".js", ".cjs", ".mjs", ".exe"].includes(extension);
 }
 
 export function createCliEnvironment(
