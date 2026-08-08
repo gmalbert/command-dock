@@ -36,7 +36,7 @@ jobs:
       - run: npm run package
       - name: Create checksum
         run: sha256sum command-dock-0.1.0.vsix > command-dock-0.1.0.vsix.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: verified-command-dock-vsix
           path: |
