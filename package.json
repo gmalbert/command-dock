@@ -1,0 +1,325 @@
+{
+  "name": "command-dock",
+  "displayName": "CommandDock",
+  "description": "An independent, secure VS Code chat interface for the Command Code CLI.",
+  "version": "0.1.0",
+  "publisher": "gmalbert",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Machine Learning",
+    "Other"
+  ],
+  "keywords": [
+    "command code",
+    "commandcode",
+    "cli agent",
+    "coding agent",
+    "ai",
+    "chat",
+    "code review",
+    "developer tools"
+  ],
+  "preview": true,
+  "pricing": "Free",
+  "icon": "media/commanddock-icon.png",
+  "galleryBanner": {
+    "color": "#171913",
+    "theme": "dark"
+  },
+  "homepage": "https://github.com/gmalbert/command-dock",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/gmalbert/command-dock.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gmalbert/command-dock/issues"
+  },
+  "qna": false,
+  "activationEvents": [
+    "onView:commandDock.chat"
+  ],
+  "main": "./dist/extension.js",
+  "extensionKind": [
+    "workspace"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": false,
+      "description": "The configured Command Code CLI can read, edit, and execute commands in the open workspace. Trust the workspace before using the agent.",
+      "restrictedConfigurations": [
+        "commandDock.cliPath"
+      ]
+    },
+    "virtualWorkspaces": {
+      "supported": false,
+      "description": "CommandDock requires a local or remote filesystem workspace and a compatible Command Code CLI process."
+    }
+  },
+  "contributes": {
+    "configuration": {
+      "title": "CommandDock",
+      "properties": {
+        "commandDock.cliPath": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Optional absolute path to a trusted Command Code CLI JavaScript entrypoint or executable. Leave empty to auto-detect the installation."
+        },
+        "commandDock.maxTurns": {
+          "type": "number",
+          "default": 100,
+          "minimum": 1,
+          "maximum": 500,
+          "description": "Maximum agent turns for each Command Code request."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "commandDock.newChat",
+        "title": "CommandDock: New Chat",
+        "icon": "$(add)"
+      },
+      {
+        "command": "commandDock.focusChat",
+        "title": "CommandDock: Show Chat"
+      },
+      {
+        "command": "commandDock.clearLocalData",
+        "title": "CommandDock: Clear Local Extension Data"
+      },
+      {
+        "command": "commandDock.copyDiagnostics",
+        "title": "CommandDock: Copy Redacted Diagnostics"
+      },
+      {
+        "command": "commandDock.openDocs",
+        "title": "CommandDock: Open Documentation"
+      },
+      {
+        "command": "commandDock.openPrivacy",
+        "title": "CommandDock: Open Privacy Policy"
+      },
+      {
+        "command": "commandDock.openTerms",
+        "title": "CommandDock: Open Terms of Service"
+      },
+      {
+        "command": "commandDock.refreshStatus",
+        "title": "CommandDock: Refresh Backend Status"
+      },
+      {
+        "command": "commandDock.signIn",
+        "title": "CommandDock: Sign In"
+      },
+      {
+        "command": "commandDock.resumeLatest",
+        "title": "CommandDock: Resume Latest Linked Session"
+      },
+      {
+        "command": "commandDock.forgetSession",
+        "title": "CommandDock: Forget Linked Session"
+      },
+      {
+        "command": "commandDock.openInCli",
+        "title": "CommandDock: Open Linked Session in CLI"
+      },
+      {
+        "command": "commandDock.manageSessions",
+        "title": "CommandDock: Manage Sessions"
+      },
+      {
+        "command": "commandDock.manageSkills",
+        "title": "CommandDock: Manage Skills"
+      },
+      {
+        "command": "commandDock.manageMcp",
+        "title": "CommandDock: Manage MCP Servers"
+      },
+      {
+        "command": "commandDock.manageTaste",
+        "title": "CommandDock: Manage Taste"
+      },
+      {
+        "command": "commandDock.manageMods",
+        "title": "CommandDock: Manage Mods"
+      },
+      {
+        "command": "commandDock.openMemory",
+        "title": "CommandDock: Manage Memory"
+      },
+      {
+        "command": "commandDock.forkSession",
+        "title": "CommandDock: Fork Linked Session"
+      },
+      {
+        "command": "commandDock.renameSession",
+        "title": "CommandDock: Rename Linked Session"
+      },
+      {
+        "command": "commandDock.rewindSession",
+        "title": "CommandDock: Rewind Linked Session"
+      },
+      {
+        "command": "commandDock.manageWorktrees",
+        "title": "CommandDock: Manage Worktrees"
+      },
+      {
+        "command": "commandDock.cancel",
+        "title": "CommandDock: Stop Active Turn",
+        "icon": "$(debug-stop)"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "commandDock",
+          "title": "CommandDock",
+          "icon": "media/commanddock-activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "commandDock": [
+        {
+          "type": "webview",
+          "id": "commandDock.chat",
+          "name": "Chat",
+          "icon": "media/commanddock-activity.svg"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "commandDock.newChat",
+          "when": "view == commandDock.chat && !commandDock.runActive",
+          "group": "navigation"
+        },
+        {
+          "command": "commandDock.cancel",
+          "when": "view == commandDock.chat && commandDock.runActive",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "commandDock.newChat",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.resumeLatest",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.clearLocalData"
+        },
+        {
+          "command": "commandDock.copyDiagnostics"
+        },
+        {
+          "command": "commandDock.openDocs"
+        },
+        {
+          "command": "commandDock.openPrivacy"
+        },
+        {
+          "command": "commandDock.openTerms"
+        },
+        {
+          "command": "commandDock.refreshStatus",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.signIn"
+        },
+        {
+          "command": "commandDock.openInCli",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageSessions",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageSkills",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageMcp",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageTaste",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageMods",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.openMemory",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.forkSession",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.renameSession",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.rewindSession",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.manageWorktrees",
+          "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.cancel",
+          "when": "commandDock.runActive"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "clean": "node scripts/clean.js",
+    "compile": "tsc -p tsconfig.json",
+    "typecheck:host": "tsc -p jsconfig.json",
+    "watch": "tsc -p tsconfig.json --watch",
+    "lint": "eslint src tests scripts",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.js\" \"scripts/**/*.js\" \"media/**/*.{js,css}\" \"*.{json,js,mjs,md}\" \".github/**/*.yml\"",
+    "test:unit": "node --test tests/unit/*.test.js",
+    "test:coverage": "c8 --check-coverage --lines 75 --functions 75 --branches 65 --statements 75 node --test tests/unit/*.test.js",
+    "test:integration": "vscode-test",
+    "test:live": "npm run compile && node scripts/live-smoke.js",
+    "test": "npm run compile && npm run test:unit",
+    "check": "npm run compile && npm run typecheck:host && node --check extension.js && node --check media/main.js && npm run test:unit",
+    "package": "vsce package --no-dependencies --pre-release",
+    "package:stable": "vsce package --no-dependencies",
+    "package:list": "vsce ls --no-dependencies",
+    "vscode:prepublish": "npm run check"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.13.3",
+    "@types/vscode": "1.95.0",
+    "@vscode/test-cli": "0.0.15",
+    "@vscode/test-electron": "3.1.0",
+    "@vscode/vsce": "3.9.2",
+    "c8": "11.0.0",
+    "eslint": "9.39.5",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0"
+  },
+  "overrides": {
+    "diff": "8.0.3",
+    "serialize-javascript": "7.0.5"
+  }
+}

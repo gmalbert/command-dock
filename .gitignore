@@ -1,0 +1,12 @@
+.DS_Store
+*.vsix
+.vscode-test/
+.playwright-cli/
+.release-*/
+.private/
+node_modules/
+coverage/
+output/
+dist/
+__pycache__/
+*.pyc

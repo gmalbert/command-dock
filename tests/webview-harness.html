@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <title>CommandDock webview smoke harness</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        --vscode-sideBar-background: #171913;
+        --vscode-foreground: #e7eadf;
+        --vscode-descriptionForeground: #a7ac9c;
+        --vscode-input-background: #20231c;
+        --vscode-input-foreground: #f2f4ec;
+        --vscode-button-background: #b7d65b;
+        --vscode-button-foreground: #10120d;
+        --vscode-textCodeBlock-background: #10120e;
+        --vscode-widget-border: #3b4032;
+        --vscode-editorGroupHeader-tabsBackground: #22261e;
+        --vscode-symbolIcon-stringForeground: #ce9178;
+        --vscode-symbolIcon-numberForeground: #b5cea8;
+        --vscode-symbolIcon-keywordForeground: #c586c0;
+        --vscode-font-family: system-ui, sans-serif;
+        --vscode-editor-font-family: Consolas, monospace;
+      }
+      #fixture-response {
+        position: fixed;
+        top: 4px;
+        right: 4px;
+        z-index: 100;
+      }
+    </style>
+    <link rel="stylesheet" href="../media/styles.css" />
+    <script>
+      const harnessState = { value: undefined, messages: [] };
+      window.harnessState = harnessState;
+      window.acquireVsCodeApi = () => ({
+        getState: () => harnessState.value,
+        setState: (value) => (harnessState.value = value),
+        postMessage: (value) => harnessState.messages.push(value),
+      });
+    </script>
+  </head>
+  <body>
+    <button id="fixture-response" type="button">Inject response</button>
+    <div class="shell">
+      <header class="topbar">
+        <div class="brand"><span>CommandDock</span><button id="backend-pill"></button></div>
+        <div class="top-actions">
+          <button id="create-branch">Branch</button><button id="new-chat">New</button
+          ><button id="more">Settings</button>
+        </div>
+      </header>
+      <main id="conversation" class="conversation">
+        <section id="welcome" class="welcome"><h1>Harness</h1></section>
+        <section id="messages" hidden></section>
+      </main>
+      <div class="context-row">
+        <button id="workspace-chip">Workspace</button><span id="file-chips"></span>
+      </div>
+      <div id="composer" class="composer-wrap">
+        <div id="slash-popover" hidden></div>
+        <textarea id="prompt"></textarea>
+        <div class="composer-footer">
+          <button id="add-context">Context</button>
+          <button id="branch-status"><span id="branch-label">main</span></button>
+          <button id="permission-mode"><span id="permission-label">Analyze</span></button>
+          <select id="effort"><option value="medium">Medium</option></select>
+          <button id="model-button"><span id="model-label">Auto</span></button>
+          <button id="send">Send</button>
+        </div>
+      </div>
+      <div id="model-popover" hidden>
+        <input id="model-search" />
+        <span id="model-count"></span><span id="model-empty"></span>
+        <div class="model-options">
+          <button class="model-option selected" data-model="auto" data-search="auto">
+            <strong>Auto</strong>
+          </button>
+        </div>
+      </div>
+    </div>
+    <script src="../media/main.js"></script>
+    <script>
+      document.getElementById("fixture-response").addEventListener("click", () => {
+        const prompt = document.getElementById("prompt");
+        prompt.value = "Show a release report";
+        prompt.dispatchEvent(new Event("input", { bubbles: true }));
+        document.getElementById("send").click();
+        window.postMessage({
+          type: "assistant",
+          summary: "42 tokens · 0.4s",
+          text: [
+            "## Verification",
+            "",
+            "| Check | Result |",
+            "| :--- | ---: |",
+            "| Unit tests | 36 |",
+            "| Audit | Pass |",
+            "",
+            "```typescript",
+            "const ready = true; // safe token rendering",
+            "```",
+          ].join("\n"),
+        });
+        window.postMessage({ type: "turnFinished" });
+      });
+    </script>
+  </body>
+</html>

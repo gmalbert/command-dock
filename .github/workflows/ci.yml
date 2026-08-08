@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        vscode: [stable, "1.95.0"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+      - run: npm run check
+      - run: npm run test:coverage
+      - run: npm run lint
+      - run: xvfb-run -a npm run test:integration -- --version ${{ matrix.vscode }}
+        if: runner.os == 'Linux'
+      - run: npm run test:integration -- --version ${{ matrix.vscode }}
+        if: runner.os != 'Linux'
+      - run: npm run package
+        if: matrix.os == 'ubuntu-latest' && matrix.vscode == 'stable'
+      - uses: actions/upload-artifact@v4
+        if: matrix.os == 'ubuntu-latest' && matrix.vscode == 'stable'
+        with:
+          name: command-dock-vsix
+          path: "*.vsix"
+
+  python-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: python -m py_compile scripts/*.py
+      - run: python scripts/release_audit.py

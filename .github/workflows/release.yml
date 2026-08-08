@@ -1,0 +1,55 @@
+name: GitHub beta release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: github-beta-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: npm ci --ignore-scripts
+      - run: npm audit --audit-level=high
+      - run: npm run check
+      - run: npm run test:coverage
+      - run: npm run lint
+      - run: npm run format:check
+      - run: xvfb-run -a npm run test:integration -- --version stable
+      - run: python -m py_compile scripts/*.py
+      - run: python scripts/release_audit.py
+      - run: npm run package:list
+      - run: npm run package
+      - name: Create checksum
+        run: sha256sum command-dock-0.1.0.vsix > command-dock-0.1.0.vsix.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: verified-command-dock-vsix
+          path: |
+            command-dock-0.1.0.vsix
+            command-dock-0.1.0.vsix.sha256
+      - name: Publish GitHub pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh release create "$GITHUB_REF_NAME"
+          command-dock-0.1.0.vsix
+          command-dock-0.1.0.vsix.sha256
+          --verify-tag
+          --prerelease
+          --notes-file GITHUB_BETA_DRAFT.md
+          --title "CommandDock $GITHUB_REF_NAME beta"
