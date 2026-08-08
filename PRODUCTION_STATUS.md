@@ -2,7 +2,7 @@
 
 Reviewed: August 8, 2026
 Candidate: `command-dock-0.1.0.vsix`
-SHA-256: `E3E6522AFB9AEC9181FA15FCB57AFD5AF6362E58D7A3BD20AC961557DAA516CD`
+SHA-256: `823AF311CCFC40280271BE1F063493F4FDC5AB0FC9BEC685321B11937F81A0CF`
 Decision: **locally verified for GitHub beta staging; tag publication awaits hosted CI and owner review**
 
 This status records evidence for the independent GitHub pre-release path in [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md). The detailed internal production-readiness audit is intentionally excluded from the public repository. “Complete” means there is source or local test evidence; it does not substitute for hosted CI or independent review.
@@ -24,7 +24,7 @@ Remaining gate: an independent person must review and sign the threat model and 
 - Startup, inactivity, and total timeouts are enforced; cancellation and shutdown terminate the process tree; generation IDs suppress stale results.
 - Exit codes, safe session linkage, explicit resume/forget/open-CLI actions, sign-in routing, dynamic model catalog, cache/version fallback, and forward-compatible event handling are implemented.
 
-## Phase 3 — testing: local suite complete; hosted matrix pending
+## Phase 3 — testing: local and hosted suites complete
 
 - Clean `npm ci --ignore-scripts` passed.
 - Strict compile/host typecheck, syntax checks, ESLint, and Prettier passed.
@@ -34,7 +34,7 @@ Remaining gate: an independent person must review and sign the threat model and 
 - The deterministic fake CLI covers successful NDJSON, malformed output, and cancellation without accounts or credits.
 - The opt-in authenticated live smoke passed using Command Code CLI 1.15.0, a synthetic read-only prompt, and no session persistence.
 - `npm audit --audit-level=high` returned zero vulnerabilities.
-- CI defines Windows, Linux, and macOS jobs against VS Code Stable and 1.95.0.
+- Hosted CI passed on Windows, Linux, and macOS against VS Code Stable and 1.95.0 for commit `548cb12`.
 
 Remaining gates: run and retain the hosted OS/version matrix; manually test reload/model/context/New Chat flows, remote hosts, detached/bare/worktree/submodule Git cases, untrusted workspaces, and a clean machine without the CLI.
 
@@ -62,7 +62,7 @@ Remaining gate: manually run the signed candidate with GitHub Copilot Chat, Kilo
 
 - The package is now `CommandDock`, publisher `gmalbert`, identifier `gmalbert.command-dock`, with a distinct `commandDock.*` namespace, original terminal-and-dock artwork, and an explicit unaffiliated-project disclaimer.
 - Package metadata, 256×256 PNG icon, owner-approved MIT license, README, changelog, beta distribution guide, privacy, support, security, known limitations, and release/rollback procedures are present.
-- `vsce ls` reports 26 extension payload files; `vsce package --pre-release` produced a 28-entry, 68.38 KB VSIX including archive metadata. The package excludes source, tests, scripts, maps, declarations, coverage, browser-smoke evidence, local profiles, private documentation, and development configuration.
+- `vsce ls` reports 26 extension payload files; `vsce package --pre-release` produced a 28-entry, 68.47 KB VSIX including archive metadata. The package excludes source, tests, scripts, maps, declarations, coverage, browser-smoke evidence, local profiles, private documentation, and development configuration.
 - The packaged text was scanned for common credential/private-key patterns with no findings.
 - The VSIX installed successfully into an isolated VS Code 1.132 profile and listed as `gmalbert.command-dock@0.1.0`.
 - A GitHub tag workflow runs the full verification suite, builds the VSIX, creates a SHA-256 checksum, uploads the verified pair as workflow artifacts, and creates a GitHub pre-release. It contains no Marketplace or Azure publishing credentials.

@@ -6,14 +6,14 @@
 - [x] `npm audit --audit-level=high` reports zero findings
 - [x] `npm run check` (36 unit tests)
 - [x] `npm run lint`
-- [ ] `npm run test:integration` on supported OS/version matrix
+- [x] `npm run test:integration` on Windows, Linux, and macOS against VS Code Stable and 1.95.0
 - [x] Local VS Code 1.132 integration run passed all 5 tests
 - [x] Local Playwright webview smoke passed for completed-state controls, semantic tables, syntax-token spans, and exact code-copy payloads
 - [x] Authenticated CLI 1.15.0 live read-only smoke passed
 - [x] `python -m py_compile scripts/*.py`
 - [x] `python scripts/release_audit.py`
 - [x] `npm run package:list` reviewed: 26 extension payload files
-- [x] `npm run package` produces a 28-entry, 68.38 KB pre-release VSIX including archive metadata
+- [x] `npm run package` produces a 28-entry, 68.47 KB pre-release VSIX including archive metadata
 - [x] Packaged text scanned for common secrets/private keys: no findings
 - [x] VSIX installed and listed in an isolated VS Code 1.132 profile
 - [x] Renamed CommandDock candidate SHA-256 recorded in `PRODUCTION_STATUS.md`
@@ -36,8 +36,8 @@
 
 ## GitHub pre-release
 
-- [ ] Renamed source committed and pushed to `gmalbert/command-dock`
-- [ ] Hosted Windows, Linux, and macOS CI passes on the pushed commit
+- [x] Renamed source committed and pushed to `gmalbert/command-dock`
+- [x] Hosted Windows, Linux, and macOS CI passes on the pushed commit
 - [ ] Reviewed tag `v0.1.0-beta.1` pushed
 - [ ] GitHub pre-release contains the workflow-built VSIX and matching `.sha256`
 - [ ] Released artifact installed into a clean profile and smoke-tested
