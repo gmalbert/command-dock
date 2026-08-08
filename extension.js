@@ -1,6 +1,7 @@
 // @ts-check
 const vscode = require("vscode");
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawn } = require("child_process");
 const {
@@ -21,6 +22,8 @@ const { parseWebviewRequest } = require("./dist/contracts.js");
 const { parseModelList } = require("./dist/commandcode/models.js");
 const { CommandCodeClient } = require("./dist/commandcode/client.js");
 const { validateBranchName } = require("./dist/git.js");
+
+const CLI_PROBE_TIMEOUT_MS = 45_000;
 
 class CommandDockViewProvider {
   static viewType = "commandDock.chat";
@@ -226,6 +229,9 @@ class CommandDockViewProvider {
           break;
         case "refreshStatus":
           await this.postBackendStatus();
+          break;
+        case "updateCli":
+          await this.updateCli();
           break;
         case "previewContext":
           await this.previewContext();
@@ -451,11 +457,37 @@ class CommandDockViewProvider {
         shell: false,
         detached: true,
         stdio: "ignore",
+        env: createInvocationEnvironment(invocation),
       },
     );
     child.unref();
     void vscode.window.showInformationMessage(
       "Command Code sign-in opened. Return here after completing it.",
+    );
+  }
+
+  async updateCli() {
+    const invocation = this.resolveCliInvocation();
+    if (invocation.detected === false) {
+      void vscode.window.showErrorMessage(invocation.displayPath);
+      return;
+    }
+    const confirmation = await vscode.window.showWarningMessage(
+      "Update the globally installed Command Code CLI? CommandDock will open the official updater in a visible terminal.",
+      { modal: true },
+      "Open Updater",
+    );
+    if (confirmation !== "Open Updater") return;
+    const terminal = vscode.window.createTerminal({
+      name: "Update Command Code",
+      shellPath: invocation.command,
+      shellArgs: [...invocation.prefixArgs, "update"],
+      cwd: os.homedir(),
+      env: createInvocationEnvironment(invocation),
+    });
+    terminal.show();
+    void vscode.window.showInformationMessage(
+      "Command Code updater opened. When it finishes, reload VS Code or run “CommandDock: Refresh Backend Status” to reload the model catalog.",
     );
   }
 
@@ -476,6 +508,7 @@ class CommandDockViewProvider {
       shellPath: invocation.command,
       shellArgs: [...invocation.prefixArgs, ...args],
       cwd: vscode.workspace.workspaceFolders?.[0]?.uri,
+      env: createInvocationEnvironment(invocation),
     });
     terminal.show();
   }
@@ -898,7 +931,11 @@ class CommandDockViewProvider {
   async postBackendStatus() {
     const invocation = this.resolveCliInvocation();
     if (invocation.detected !== false) {
-      const version = await this.probeCli(invocation, ["--version"], 10_000);
+      const version = await this.probeCli(
+        invocation,
+        ["--version", "--no-auto-update"],
+        CLI_PROBE_TIMEOUT_MS,
+      );
       if (!version.ok) {
         this.view?.webview.postMessage({
           type: "backendStatus",
@@ -917,8 +954,8 @@ class CommandDockViewProvider {
       }
       const status = await this.probeCli(
         invocation,
-        ["status", "--json"],
-        15_000,
+        ["status", "--json", "--no-auto-update"],
+        CLI_PROBE_TIMEOUT_MS,
       );
       const signedOut =
         !status.ok ||
@@ -934,8 +971,8 @@ class CommandDockViewProvider {
       });
       const catalog = await this.probeCli(
         invocation,
-        ["--list-models"],
-        20_000,
+        ["--list-models", "--no-auto-update"],
+        CLI_PROBE_TIMEOUT_MS,
       );
       if (catalog.ok) {
         const models = parseModelList(catalog.stdout);
@@ -1147,7 +1184,11 @@ class CommandDockViewProvider {
       );
     }
 
-    const version = await this.probeCli(invocation, ["--version"], 10_000);
+    const version = await this.probeCli(
+      invocation,
+      ["--version", "--no-auto-update"],
+      CLI_PROBE_TIMEOUT_MS,
+    );
     if (
       !version.ok ||
       !isVersionCompatible(version.stdout, MINIMUM_CLI_VERSION)
@@ -1160,7 +1201,11 @@ class CommandDockViewProvider {
       });
       return;
     }
-    const auth = await this.probeCli(invocation, ["status", "--json"], 15_000);
+    const auth = await this.probeCli(
+      invocation,
+      ["status", "--json", "--no-auto-update"],
+      CLI_PROBE_TIMEOUT_MS,
+    );
     if (
       !auth.ok ||
       /not logged|signed out|unauthenticated|login required/i.test(
@@ -1335,7 +1380,7 @@ class CommandDockViewProvider {
         args,
         cwd: workspace,
         generation: runGeneration,
-        env: createCliEnvironment(process.env),
+        env: createInvocationEnvironment(invocation),
         maxEvents: 10_000,
       },
       {
@@ -1601,7 +1646,7 @@ class CommandDockViewProvider {
                 <div class="file-chips" id="file-chips"></div>
               </div>
               <div class="composer" id="composer">
-                <div class="slash-popover" id="slash-popover" hidden><button data-slash="/plan "><strong>/plan</strong><span>Plan in read-only mode</span></button><button data-slash="/review"><strong>/review</strong><span>Review current changes</span></button><button data-slash="/model"><strong>/model</strong><span>Choose a model</span></button><button data-slash="/sessions"><strong>/sessions</strong><span>Manage CLI sessions</span></button><button data-slash="/fork"><strong>/fork</strong><span>Fork linked session</span></button><button data-slash="/rename"><strong>/rename</strong><span>Rename linked session</span></button><button data-slash="/rewind"><strong>/rewind</strong><span>Open checkpoint rewind</span></button><button data-slash="/worktree"><strong>/worktree</strong><span>Manage CLI worktrees</span></button><button data-slash="/skills"><strong>/skills</strong><span>Manage skills</span></button><button data-slash="/mcp"><strong>/mcp</strong><span>Manage MCP servers</span></button><button data-slash="/mods"><strong>/mods</strong><span>Manage mods</span></button><button data-slash="/memory"><strong>/memory</strong><span>Manage memory</span></button><button data-slash="/taste"><strong>/taste</strong><span>Manage taste</span></button><button data-slash="/status"><strong>/status</strong><span>Refresh backend status</span></button></div>
+                <div class="slash-popover" id="slash-popover" hidden><button data-slash="/plan "><strong>/plan</strong><span>Plan in read-only mode</span></button><button data-slash="/review"><strong>/review</strong><span>Review current changes</span></button><button data-slash="/model"><strong>/model</strong><span>Choose a model</span></button><button data-slash="/sessions"><strong>/sessions</strong><span>Manage CLI sessions</span></button><button data-slash="/fork"><strong>/fork</strong><span>Fork linked session</span></button><button data-slash="/rename"><strong>/rename</strong><span>Rename linked session</span></button><button data-slash="/rewind"><strong>/rewind</strong><span>Open checkpoint rewind</span></button><button data-slash="/worktree"><strong>/worktree</strong><span>Manage CLI worktrees</span></button><button data-slash="/skills"><strong>/skills</strong><span>Manage skills</span></button><button data-slash="/mcp"><strong>/mcp</strong><span>Manage MCP servers</span></button><button data-slash="/mods"><strong>/mods</strong><span>Manage mods</span></button><button data-slash="/memory"><strong>/memory</strong><span>Manage memory</span></button><button data-slash="/taste"><strong>/taste</strong><span>Manage taste</span></button><button data-slash="/status"><strong>/status</strong><span>Refresh backend status</span></button><button data-slash="/update"><strong>/update</strong><span>Update Command Code CLI</span></button></div>
                 <textarea id="prompt" rows="1" aria-label="Message Command" placeholder="Ask Command to build, explain, or fix…"></textarea>
                 <div class="composer-footer">
                   <div class="composer-options">
@@ -1663,7 +1708,7 @@ function probeCli(invocation, args, timeoutMs, trackProcess) {
         windowsHide: true,
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
-        env: createCliEnvironment(process.env),
+        env: createInvocationEnvironment(invocation),
       });
       trackProcess?.(child, true);
     } catch (error) {
@@ -1730,6 +1775,14 @@ function probeProcess(command, args, cwd, timeoutMs) {
       clearTimeout(timer);
       resolve({ ok: code === 0, stderr });
     });
+  });
+}
+
+function createInvocationEnvironment(invocation) {
+  return createCliEnvironment(process.env, {
+    electronRunAsNode:
+      invocation.command === process.execPath &&
+      invocation.prefixArgs.some((value) => /\.(?:c?js|mjs)$/i.test(value)),
   });
 }
 
@@ -2146,6 +2199,9 @@ function activate(context) {
     ),
     vscode.commands.registerCommand("commandDock.refreshStatus", () =>
       provider.postBackendStatus(),
+    ),
+    vscode.commands.registerCommand("commandDock.updateCli", () =>
+      provider.updateCli(),
     ),
     vscode.commands.registerCommand("commandDock.signIn", () =>
       provider.signIn(),

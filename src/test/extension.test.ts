@@ -19,6 +19,7 @@ suite("CommandDock extension", () => {
       "commandDock.openPrivacy",
       "commandDock.openTerms",
       "commandDock.refreshStatus",
+      "commandDock.updateCli",
       "commandDock.signIn",
       "commandDock.resumeLatest",
       "commandDock.forgetSession",

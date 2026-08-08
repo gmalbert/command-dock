@@ -69,6 +69,7 @@ export function isTrustedCliPath(value: string): boolean {
 
 export function createCliEnvironment(
   input: NodeJS.ProcessEnv,
+  options: { electronRunAsNode?: boolean } = {},
 ): NodeJS.ProcessEnv {
   const output: NodeJS.ProcessEnv = {};
   const allowed =
@@ -77,5 +78,6 @@ export function createCliEnvironment(
     if (value !== undefined && allowed.test(key)) output[key] = value;
   }
   output.NO_COLOR = "1";
+  if (options.electronRunAsNode) output.ELECTRON_RUN_AS_NODE = "1";
   return output;
 }

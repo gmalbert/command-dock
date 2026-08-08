@@ -54,6 +54,26 @@ test("interactive CLI surfaces re-check Workspace Trust", () => {
   );
 });
 
+test("CLI updates require confirmation and run in a visible terminal", () => {
+  const method = host.slice(
+    host.indexOf("async updateCli()"),
+    host.indexOf("openCliSurface", host.indexOf("async updateCli()")),
+  );
+  assert.match(method, /showWarningMessage/);
+  assert.match(method, /modal: true/);
+  assert.match(method, /confirmation !== ["']Open Updater["']/);
+  assert.match(method, /createTerminal/);
+  assert.match(
+    method,
+    /shellArgs: \[\.\.\.invocation\.prefixArgs, ["']update["']\]/,
+  );
+  assert.match(method, /createInvocationEnvironment\(invocation\)/);
+  assert.ok(
+    method.indexOf("confirmation !==") < method.indexOf("createTerminal"),
+    "confirmation must happen before opening the updater terminal",
+  );
+});
+
 test("workspace file and folder actions enforce real-path containment", () => {
   const helper = host.slice(
     host.indexOf("function isSafeWorkspaceUri"),

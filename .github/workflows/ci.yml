@@ -26,9 +26,9 @@ jobs:
       - run: npm run check
       - run: npm run test:coverage
       - run: npm run lint
-      - run: xvfb-run -a npm run test:integration -- --version ${{ matrix.vscode }}
+      - run: xvfb-run -a npm run test:integration -- --code-version ${{ matrix.vscode }}
         if: runner.os == 'Linux'
-      - run: npm run test:integration -- --version ${{ matrix.vscode }}
+      - run: npm run test:integration -- --code-version ${{ matrix.vscode }}
         if: runner.os != 'Linux'
       - run: npm run package
         if: matrix.os == 'ubuntu-latest' && matrix.vscode == 'stable'

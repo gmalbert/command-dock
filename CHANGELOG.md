@@ -4,6 +4,20 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+## [0.1.1-beta.1] - 2026-08-08
+
+### Fixed
+
+- Run discovered JavaScript CLI entry points correctly inside VS Code's Electron extension host.
+- Allow enough time for a cold Command Code startup before loading the live model catalog, and skip background update checks during status probes.
+- Pass the correct `--code-version` option so hosted VS Code integration jobs execute tests instead of printing the test runner version.
+
+### Added
+
+- User-confirmed Command Code CLI updates through a visible VS Code terminal, available from the view toolbar, Command Palette, and `/update`.
+
+## [0.1.0-beta.1] - 2026-08-08
+
 ### Added
 
 - Independent CommandDock identity, original terminal-and-dock artwork, and GitHub pre-release beta distribution.
@@ -24,7 +38,3 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 ### Security
 
 - Workspace Trust enforcement, machine-scoped CLI override, non-symlink path validation, no implicit `--trust`, bounded frames/events/transcripts, strict webview contracts, CSP, and process-tree cancellation.
-
-## [0.1.0-beta.1] - 2026-08-08
-
-- Initial GitHub pre-release beta candidate.

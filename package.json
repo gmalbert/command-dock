@@ -2,7 +2,7 @@
   "name": "command-dock",
   "displayName": "CommandDock",
   "description": "An independent, secure VS Code chat interface for the Command Code CLI.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "gmalbert",
   "license": "MIT",
   "engines": {
@@ -112,6 +112,11 @@
         "title": "CommandDock: Refresh Backend Status"
       },
       {
+        "command": "commandDock.updateCli",
+        "title": "CommandDock: Update Command Code CLI",
+        "icon": "$(cloud-download)"
+      },
+      {
         "command": "commandDock.signIn",
         "title": "CommandDock: Sign In"
       },
@@ -203,6 +208,11 @@
           "command": "commandDock.cancel",
           "when": "view == commandDock.chat && commandDock.runActive",
           "group": "navigation"
+        },
+        {
+          "command": "commandDock.updateCli",
+          "when": "view == commandDock.chat && !commandDock.runActive",
+          "group": "navigation@2"
         }
       ],
       "commandPalette": [
@@ -232,6 +242,9 @@
         {
           "command": "commandDock.refreshStatus",
           "when": "workspaceFolderCount > 0 && isWorkspaceTrusted"
+        },
+        {
+          "command": "commandDock.updateCli"
         },
         {
           "command": "commandDock.signIn"
