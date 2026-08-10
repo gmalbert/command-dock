@@ -13,6 +13,7 @@ if (process.env.COMMANDCODE_LIVE_SMOKE !== "1") {
 const invocation = resolveCliInvocation();
 const client = new CommandCodeClient();
 let finalText = "";
+let finalError = "";
 client
   .run(
     {
@@ -34,12 +35,15 @@ client
     },
     {
       onFrame(frame) {
-        if (frame.type === "result") finalText = frame.finalText;
+        if (frame.type !== "result") return;
+        finalText = frame.finalText;
+        finalError = frame.error || "";
       },
     },
   )
   .then((result) => {
     if (result.error) throw new Error(result.error.message);
+    if (finalError) throw new Error(finalError);
     if (!finalText.includes("COMMANDCODE_VSCODE_SMOKE_OK"))
       throw new Error(`Unexpected response: ${finalText}`);
     console.log("PASS live CommandCode client smoke test");

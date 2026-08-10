@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   isVersionCompatible,
+  knownInstallPaths,
   parseSemver,
   resolveCliInvocation,
 } = require("../../dist/commandcode/discovery.js");
@@ -34,15 +35,55 @@ test("rejects relative, missing, and symlinked CLI overrides", () => {
 });
 
 test("resolves a trusted script through the extension host Node executable", () => {
+  const nodeExecutable = "C:\\Program Files\\nodejs\\node.exe";
   const invocation = resolveCliInvocation({
     configuredPath: "C:\\tools\\cmd.mjs",
     platform: "win32",
+    env: {},
+    nodeExecutable,
     exists: () => true,
     realpath: (value) => value,
   });
-  assert.equal(invocation.command, process.execPath);
+  assert.equal(invocation.command, nodeExecutable);
   assert.deepEqual(invocation.prefixArgs, ["C:\\tools\\cmd.mjs"]);
   assert.equal(invocation.source, "setting");
+});
+
+test("runs a discovered JavaScript CLI with Node instead of Electron", () => {
+  const appData = "C:\\Users\\alice\\AppData\\Roaming";
+  const entry = `${appData}\\npm\\node_modules\\command-code\\dist\\index.mjs`;
+  const nodeExecutable = "C:\\Program Files\\nodejs\\node.exe";
+  const existing = new Set([entry.toLowerCase(), nodeExecutable.toLowerCase()]);
+  const invocation = resolveCliInvocation({
+    platform: "win32",
+    env: { APPDATA: appData, Path: "C:\\Program Files\\nodejs" },
+    exists: (value) => existing.has(value.toLowerCase()),
+    realpath: (value) => value,
+  });
+  assert.equal(invocation.command, nodeExecutable);
+  assert.deepEqual(invocation.prefixArgs, [entry]);
+  assert.equal(invocation.source, "known-install");
+});
+
+test("builds known installation paths for the requested platform", () => {
+  assert.deepEqual(
+    knownInstallPaths(
+      "win32",
+      {
+        APPDATA: "C:\\Users\\alice\\AppData\\Roaming",
+        LOCALAPPDATA: "C:\\Users\\alice\\AppData\\Local",
+      },
+      "C:\\Users\\alice",
+    ),
+    [
+      "C:\\Users\\alice\\AppData\\Roaming\\npm\\node_modules\\command-code\\dist\\index.mjs",
+      "C:\\Users\\alice\\AppData\\Local\\Programs\\command-code\\cmdc.exe",
+    ],
+  );
+  assert.equal(
+    knownInstallPaths("linux", {}, "/home/alice")[0],
+    "/home/alice/.local/bin/cmd",
+  );
 });
 
 test("discovers known installations and otherwise uses PATH without a shell", () => {

@@ -351,17 +351,23 @@ class CommandDockViewProvider {
     this.cliStatusCache = undefined;
   }
 
-  async getCliStatus(invocation, { force = false } = {}) {
+  getCachedCliStatus(invocation) {
     const key = JSON.stringify([invocation.command, invocation.prefixArgs]);
-    if (this.cliStatusPromise?.key === key)
-      return this.cliStatusPromise.promise;
     if (
-      !force &&
       this.cliStatusCache?.key === key &&
       Date.now() - this.cliStatusCache.checkedAt < CLI_STATUS_CACHE_MS
     ) {
       return this.cliStatusCache.result;
     }
+    return undefined;
+  }
+
+  async getCliStatus(invocation, { force = false } = {}) {
+    const key = JSON.stringify([invocation.command, invocation.prefixArgs]);
+    if (this.cliStatusPromise?.key === key)
+      return this.cliStatusPromise.promise;
+    const cached = force ? undefined : this.getCachedCliStatus(invocation);
+    if (cached) return cached;
 
     const promise = this.probeCli(
       invocation,
@@ -1274,23 +1280,20 @@ class CommandDockViewProvider {
       );
     }
 
-    const cliStatus = await this.getCliStatus(invocation);
-    if (cliStatus.kind === "error") {
+    // The status indicator makes a network request and may still be running
+    // from view activation. It must not become a second availability gate in
+    // front of the real turn. Honor fresh definitive results; otherwise let
+    // the CLI request report its own structured auth or transport error.
+    const cachedCliStatus = this.getCachedCliStatus(invocation);
+    if (cachedCliStatus?.kind === "incompatible") {
       send({
         type: "turnError",
-        message: `Could not verify the Command Code CLI: ${cliStatus.message}`,
-      });
-      return;
-    }
-    if (cliStatus.kind === "incompatible") {
-      send({
-        type: "turnError",
-        message: `Command Code ${cliStatus.version} is incompatible. Update to ${MINIMUM_CLI_VERSION} or newer.`,
+        message: `Command Code ${cachedCliStatus.version} is incompatible. Update to ${MINIMUM_CLI_VERSION} or newer.`,
         action: "upgrade",
       });
       return;
     }
-    if (cliStatus.kind === "signed-out") {
+    if (cachedCliStatus?.kind === "signed-out") {
       send({
         type: "turnError",
         message: "Sign in to Command Code before sending a request.",
@@ -1373,7 +1376,6 @@ class CommandDockViewProvider {
       ? `${text.trim()}\n\nStructured context explicitly attached in VS Code:\n${snippetText}`
       : text;
     const args = [
-      ...invocation.prefixArgs,
       ...buildRunArguments({
         prompt: promptWithContext,
         model: model.id,
