@@ -1020,7 +1020,6 @@ window.addEventListener("message", ({ data }) => {
   if (data.type === "assistant") {
     const turn = currentTurn();
     if (turn) {
-      turn.status = "complete";
       turn.text =
         safeText(data.text) ||
         "Command Code completed without a text response.";
@@ -1051,6 +1050,11 @@ window.addEventListener("message", ({ data }) => {
     autosize();
   }
   if (data.type === "turnFinished") {
+    const turn = currentTurn();
+    if (turn) {
+      turn.status = "complete";
+      renderTranscript();
+    }
     busy = false;
     composer.classList.remove("busy");
     autosize();

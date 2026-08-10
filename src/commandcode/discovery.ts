@@ -16,6 +16,7 @@ export interface DiscoveryOptions {
   platform?: NodeJS.Platform;
   env?: NodeJS.ProcessEnv;
   homeDir?: string;
+  nodeExecutable?: string;
   exists?: (value: string) => boolean;
   realpath?: (value: string) => string;
 }
@@ -35,6 +36,8 @@ export function resolveCliInvocation(
   if (configured)
     return invocationForTrustedOverride(configured, {
       platform,
+      env,
+      nodeExecutable: options.nodeExecutable,
       exists,
       realpath,
     });
@@ -45,13 +48,13 @@ export function resolveCliInvocation(
     options.homeDir ?? os.homedir(),
   )) {
     if (exists(candidate))
-      return invocationForFile(
-        candidate,
-        "known-install",
-        realpath,
-        false,
+      return invocationForFile(candidate, "known-install", {
         platform,
-      );
+        env,
+        nodeExecutable: options.nodeExecutable,
+        exists,
+        realpath,
+      });
   }
 
   return {
@@ -64,7 +67,11 @@ export function resolveCliInvocation(
 
 export function invocationForTrustedOverride(
   configured: string,
-  options: Pick<Required<DiscoveryOptions>, "platform" | "exists" | "realpath">,
+  options: Pick<
+    Required<DiscoveryOptions>,
+    "platform" | "exists" | "realpath"
+  > &
+    Pick<DiscoveryOptions, "env" | "nodeExecutable">,
 ): CliInvocation {
   if (!pathForPlatform(options.platform).isAbsolute(configured))
     throw new Error("The CommandCode CLI override must be an absolute path.");
@@ -79,27 +86,34 @@ export function invocationForTrustedOverride(
       "The configured CommandCode CLI path must not be a symbolic link.",
     );
   }
-  return invocationForFile(
-    resolved,
-    "setting",
-    options.realpath,
-    true,
-    options.platform,
-  );
+  return invocationForFile(resolved, "setting", {
+    platform: options.platform,
+    env: options.env ?? process.env,
+    nodeExecutable: options.nodeExecutable,
+    exists: options.exists,
+    realpath: options.realpath,
+    alreadyResolved: true,
+  });
 }
 
 function invocationForFile(
   candidate: string,
   source: CliInvocation["source"],
-  realpath: (value: string) => string,
-  alreadyResolved: boolean,
-  platform: NodeJS.Platform,
+  options: Pick<
+    Required<DiscoveryOptions>,
+    "platform" | "env" | "exists" | "realpath"
+  > &
+    Pick<DiscoveryOptions, "nodeExecutable"> & { alreadyResolved?: boolean },
 ): CliInvocation {
-  const resolved = alreadyResolved ? candidate : realpath(candidate);
-  const extension = pathForPlatform(platform).extname(resolved).toLowerCase();
+  const resolved = options.alreadyResolved
+    ? candidate
+    : options.realpath(candidate);
+  const extension = pathForPlatform(options.platform)
+    .extname(resolved)
+    .toLowerCase();
   if (SCRIPT_EXTENSIONS.has(extension)) {
     return {
-      command: process.execPath,
+      command: resolveNodeExecutable(options),
       prefixArgs: [resolved],
       displayPath: resolved,
       source,
@@ -108,6 +122,38 @@ function invocationForFile(
   if (!EXECUTABLE_EXTENSIONS.has(extension))
     throw new Error("Unsupported CommandCode CLI file type.");
   return { command: resolved, prefixArgs: [], displayPath: resolved, source };
+}
+
+function resolveNodeExecutable(
+  options: Pick<
+    Required<DiscoveryOptions>,
+    "platform" | "env" | "exists" | "realpath"
+  > &
+    Pick<DiscoveryOptions, "nodeExecutable">,
+): string {
+  const platformPath = pathForPlatform(options.platform);
+  const executableName = options.platform === "win32" ? "node.exe" : "node";
+  const candidates: string[] = [];
+  if (options.nodeExecutable) candidates.push(options.nodeExecutable);
+  const appData = environmentValue(options.env, "APPDATA", options.platform);
+  if (options.platform === "win32" && appData)
+    candidates.push(platformPath.join(appData, "npm", executableName));
+  const pathValue = environmentValue(options.env, "PATH", options.platform);
+  for (const entry of pathValue?.split(platformPath.delimiter) ?? []) {
+    const directory = entry.trim().replace(/^"|"$/g, "");
+    if (directory)
+      candidates.push(platformPath.join(directory, executableName));
+  }
+  if (!process.versions.electron) candidates.push(process.execPath);
+
+  for (const candidate of candidates) {
+    if (!platformPath.isAbsolute(candidate) || !options.exists(candidate))
+      continue;
+    return options.realpath(candidate);
+  }
+  throw new Error(
+    "A Node.js 22 or newer executable is required to run the CommandCode CLI JavaScript entrypoint.",
+  );
 }
 
 export function knownInstallPaths(
@@ -163,6 +209,19 @@ export function isVersionCompatible(
 function normalizePath(value: string, platform: NodeJS.Platform): string {
   const normalized = pathForPlatform(platform).normalize(value);
   return platform === "win32" ? normalized.toLowerCase() : normalized;
+}
+
+function environmentValue(
+  env: NodeJS.ProcessEnv,
+  name: string,
+  platform: NodeJS.Platform,
+): string | undefined {
+  if (env[name] !== undefined) return env[name];
+  if (platform !== "win32") return undefined;
+  const match = Object.entries(env).find(
+    ([key, value]) => key.toUpperCase() === name && value !== undefined,
+  );
+  return match?.[1];
 }
 
 function pathForPlatform(platform: NodeJS.Platform): path.PlatformPath {

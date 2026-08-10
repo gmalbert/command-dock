@@ -4,6 +4,25 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+## [0.1.5-beta.1] - 2026-08-09
+
+### Fixed
+
+- Allow real turns to start while the network-backed CLI status indicator is unavailable or still checking; fresh cached signed-out and incompatible results remain enforced.
+
+## [0.1.4-beta.1] - 2026-08-09
+
+### Fixed
+
+- Keep completed turns pending until their final activity update arrives so the Command Code connection indicator stops spinning after a response is rendered.
+
+## [0.1.3-beta.1] - 2026-08-09
+
+### Fixed
+
+- Launch JavaScript CLI installations with their system Node.js 22+ runtime instead of VS Code's embedded Electron runtime, which misparsed status and prompt arguments on Windows.
+- Pass the JavaScript CLI entrypoint exactly once for chat turns instead of duplicating it in the final process arguments.
+
 ## [0.1.2-beta.1] - 2026-08-08
 
 ### Fixed

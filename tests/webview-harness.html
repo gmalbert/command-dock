@@ -82,11 +82,17 @@
     </div>
     <script src="../media/main.js"></script>
     <script>
-      document.getElementById("fixture-response").addEventListener("click", () => {
+      const injectResponse = () => {
         const prompt = document.getElementById("prompt");
         prompt.value = "Show a release report";
         prompt.dispatchEvent(new Event("input", { bubbles: true }));
         document.getElementById("send").click();
+        window.postMessage({
+          type: "activity",
+          id: "run",
+          label: "Command Code connected",
+          status: "running",
+        });
         window.postMessage({
           type: "assistant",
           summary: "42 tokens · 0.4s",
@@ -103,8 +109,20 @@
             "```",
           ].join("\n"),
         });
+        window.postMessage({
+          type: "activity",
+          id: "run",
+          label: "Command Code finished",
+          status: "done",
+        });
         window.postMessage({ type: "turnFinished" });
-      });
+      };
+      document
+        .getElementById("fixture-response")
+        .addEventListener("click", injectResponse);
+      if (new URLSearchParams(window.location.search).has("auto")) {
+        injectResponse();
+      }
     </script>
   </body>
 </html>

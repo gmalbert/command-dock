@@ -46,15 +46,30 @@ test("sign-in verifies structured status and uses a visible terminal", () => {
   assert.doesNotMatch(signIn, /child\.unref/);
 });
 
-test("turn preflight shares structured status and preserves non-auth errors", () => {
+test("turn preflight never waits on the network-backed status probe", () => {
   const run = host.slice(
     host.indexOf("async runCommandCodeTurnCore"),
     host.indexOf("handleAgentEvent"),
   );
-  assert.match(run, /getCliStatus\(invocation\)/);
-  assert.match(run, /cliStatus\.kind === ["']error["']/);
-  assert.match(run, /cliStatus\.kind === ["']signed-out["']/);
+  assert.match(run, /getCachedCliStatus\(invocation\)/);
+  assert.doesNotMatch(run, /await this\.getCliStatus\(invocation\)/);
+  assert.match(run, /cachedCliStatus\?\.kind === ["']signed-out["']/);
   assert.doesNotMatch(run, /\["--version", "--no-auto-update"\]/);
+});
+
+test("turn arguments do not duplicate the JavaScript CLI entrypoint", () => {
+  const run = host.slice(
+    host.indexOf(
+      "const args = [",
+      host.indexOf("async runCommandCodeTurnCore"),
+    ),
+    host.indexOf(
+      "const additionalDirectories",
+      host.indexOf("async runCommandCodeTurnCore"),
+    ),
+  );
+  assert.doesNotMatch(run, /invocation\.prefixArgs/);
+  assert.match(run, /buildRunArguments/);
 });
 
 test("backend status and model probes are single-flight", () => {

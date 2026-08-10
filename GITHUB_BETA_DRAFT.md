@@ -2,13 +2,17 @@
 
 ## Release title
 
-CommandDock 0.1.2 beta 1
+CommandDock 0.1.5 beta 1
 
 ## Summary
 
-CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This beta makes the interface responsive at narrow VS Code sidebar widths and improves authentication and CLI status handling while retaining the dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and per-turn Agent authorization.
+CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This beta fixes Windows CLI launch failures, decouples real turns from the network-backed status indicator, and ensures completed activity indicators settle correctly while retaining the dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and per-turn Agent authorization.
 
-CommandDock now shares structured, single-flight CLI status probes so startup and model discovery do not contend with each other. Timeouts are distinguished from authentication failures, and sign-in opens in a visible terminal only when the account is not already authenticated.
+CommandDock now launches JavaScript CLI installations with the system Node.js runtime that installed them rather than VS Code's embedded Electron runtime. It also passes the CLI entrypoint only once per chat turn. Together these changes prevent the status-check timeout and `too many arguments` failures seen on Windows.
+
+Completed assistant text now remains associated with its pending turn until the final activity update arrives, preventing the “Command Code connected” indicator from spinning after the response has finished.
+
+Fresh cached signed-out and incompatible results still stop a turn, but a status check that is unavailable or still running no longer blocks the real CLI request from starting and returning its own authoritative result.
 
 The main README now includes complete upgrade instructions for both the CommandDock VSIX and the separately installed Command Code CLI. CommandDock never updates the CLI silently.
 
