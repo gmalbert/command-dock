@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const {
   isVersionCompatible,
+  knownInstallPaths,
   parseSemver,
   resolveCliInvocation,
 } = require("../../dist/commandcode/discovery.js");
@@ -62,6 +63,27 @@ test("runs a discovered JavaScript CLI with Node instead of Electron", () => {
   assert.equal(invocation.command, nodeExecutable);
   assert.deepEqual(invocation.prefixArgs, [entry]);
   assert.equal(invocation.source, "known-install");
+});
+
+test("builds known installation paths for the requested platform", () => {
+  assert.deepEqual(
+    knownInstallPaths(
+      "win32",
+      {
+        APPDATA: "C:\\Users\\alice\\AppData\\Roaming",
+        LOCALAPPDATA: "C:\\Users\\alice\\AppData\\Local",
+      },
+      "C:\\Users\\alice",
+    ),
+    [
+      "C:\\Users\\alice\\AppData\\Roaming\\npm\\node_modules\\command-code\\dist\\index.mjs",
+      "C:\\Users\\alice\\AppData\\Local\\Programs\\command-code\\cmdc.exe",
+    ],
+  );
+  assert.equal(
+    knownInstallPaths("linux", {}, "/home/alice")[0],
+    "/home/alice/.local/bin/cmd",
+  );
 });
 
 test("discovers known installations and otherwise uses PATH without a shell", () => {

@@ -161,10 +161,11 @@ export function knownInstallPaths(
   env: NodeJS.ProcessEnv,
   homeDir: string,
 ): string[] {
+  const platformPath = pathForPlatform(platform);
   if (platform === "win32") {
     return [
       env.APPDATA &&
-        path.join(
+        platformPath.join(
           env.APPDATA,
           "npm",
           "node_modules",
@@ -173,11 +174,16 @@ export function knownInstallPaths(
           "index.mjs",
         ),
       env.LOCALAPPDATA &&
-        path.join(env.LOCALAPPDATA, "Programs", "command-code", "cmdc.exe"),
+        platformPath.join(
+          env.LOCALAPPDATA,
+          "Programs",
+          "command-code",
+          "cmdc.exe",
+        ),
     ].filter((value): value is string => Boolean(value));
   }
   return [
-    path.join(homeDir, ".local", "bin", "cmd"),
+    platformPath.join(homeDir, ".local", "bin", "cmd"),
     "/opt/homebrew/bin/cmd",
     "/usr/local/bin/cmd",
     "/usr/bin/cmd",
