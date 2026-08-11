@@ -56,7 +56,7 @@ if (process.env.FAKE_CLI_MODE === "burst") {
       finalText: `fixture:burst:${count}`,
     }),
   );
-  return;
+  process.exit(0);
 }
 if (process.env.FAKE_CLI_MODE === "silent-after-start") {
   const delayMs = Number(process.env.FAKE_DELAY_MS || 250);
@@ -79,7 +79,7 @@ if (process.env.FAKE_CLI_MODE === "silent-after-start") {
       }),
     );
   }, delayMs);
-  return;
+  process.exit(0);
 }
 if (process.env.FAKE_CLI_MODE === "tree") {
   const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
