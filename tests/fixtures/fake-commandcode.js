@@ -28,14 +28,14 @@ if (process.env.FAKE_CLI_MODE === "malformed") {
 }
 if (process.env.FAKE_CLI_MODE === "burst") {
   const count = Number(process.env.FAKE_EVENT_COUNT || 12_000);
-  console.log(
+  const lines = [
     JSON.stringify({
       type: "event",
       event: { type: "run_start", sessionId: "fixture-session" },
     }),
-  );
+  ];
   for (let index = 0; index < count; index += 1)
-    console.log(
+    lines.push(
       JSON.stringify({
         type: "event",
         event: {
@@ -45,7 +45,7 @@ if (process.env.FAKE_CLI_MODE === "burst") {
         },
       }),
     );
-  console.log(
+  lines.push(
     JSON.stringify({
       type: "result",
       subtype: "success",
@@ -56,9 +56,9 @@ if (process.env.FAKE_CLI_MODE === "burst") {
       finalText: `fixture:burst:${count}`,
     }),
   );
-  process.exit(0);
+  process.stdout.write(`${lines.join("\n")}\n`, () => {});
 }
-if (process.env.FAKE_CLI_MODE === "silent-after-start") {
+else if (process.env.FAKE_CLI_MODE === "silent-after-start") {
   const delayMs = Number(process.env.FAKE_DELAY_MS || 250);
   console.log(
     JSON.stringify({
