@@ -26,6 +26,61 @@ if (process.env.FAKE_CLI_MODE === "malformed") {
   console.log("{not-json");
   process.exit(0);
 }
+if (process.env.FAKE_CLI_MODE === "burst") {
+  const count = Number(process.env.FAKE_EVENT_COUNT || 12_000);
+  console.log(
+    JSON.stringify({
+      type: "event",
+      event: { type: "run_start", sessionId: "fixture-session" },
+    }),
+  );
+  for (let index = 0; index < count; index += 1)
+    console.log(
+      JSON.stringify({
+        type: "event",
+        event: {
+          type: "tool_update",
+          toolCallId: "burst",
+          message: `event-${index}`,
+        },
+      }),
+    );
+  console.log(
+    JSON.stringify({
+      type: "result",
+      subtype: "success",
+      sessionId: "fixture-session",
+      stopReason: "done",
+      usage: { totalTokens: count },
+      durationMs: 100,
+      finalText: `fixture:burst:${count}`,
+    }),
+  );
+  return;
+}
+if (process.env.FAKE_CLI_MODE === "silent-after-start") {
+  const delayMs = Number(process.env.FAKE_DELAY_MS || 250);
+  console.log(
+    JSON.stringify({
+      type: "event",
+      event: { type: "run_start", sessionId: "fixture-session" },
+    }),
+  );
+  setTimeout(() => {
+    console.log(
+      JSON.stringify({
+        type: "result",
+        subtype: "success",
+        sessionId: "fixture-session",
+        stopReason: "done",
+        usage: { totalTokens: 7 },
+        durationMs: delayMs,
+        finalText: "fixture:quiet-success",
+      }),
+    );
+  }, delayMs);
+  return;
+}
 if (process.env.FAKE_CLI_MODE === "tree") {
   const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
     stdio: "ignore",

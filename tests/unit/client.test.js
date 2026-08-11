@@ -15,12 +15,59 @@ const invocation = {
   source: "setting",
 };
 
-test("uses release-safe process timeout boundaries", () => {
-  assert.deepEqual(DEFAULT_TIMEOUTS, {
-    startupMs: 60_000,
-    inactivityMs: 120_000,
-    totalMs: 30 * 60_000,
-  });
+test("does not time out production turns that remain alive", () => {
+  assert.deepEqual(DEFAULT_TIMEOUTS, {});
+});
+
+test("client allows a healthy process to stay quiet after startup", async () => {
+  const client = new CommandCodeClient();
+  const result = await client.run(
+    {
+      invocation,
+      args: [],
+      cwd: process.cwd(),
+      generation: 5,
+      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "250" },
+    },
+    { onFrame: () => {} },
+  );
+  assert.equal(result.finalReceived, true);
+  assert.equal(result.error, undefined);
+});
+
+test("client can opt into finite inactivity limits for smoke tests", async () => {
+  const client = new CommandCodeClient();
+  const result = await client.run(
+    {
+      invocation,
+      args: [],
+      cwd: process.cwd(),
+      generation: 6,
+      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "250" },
+      timeouts: { inactivityMs: 50 },
+    },
+    { onFrame: () => {} },
+  );
+  assert.equal(result.finalReceived, false);
+  assert.match(result.error.message, /stopped producing output/);
+});
+
+test("client streams more than 10,000 events without an arbitrary turn cap", async () => {
+  const frames = [];
+  const client = new CommandCodeClient();
+  const result = await client.run(
+    {
+      invocation,
+      args: [],
+      cwd: process.cwd(),
+      generation: 7,
+      env: { FAKE_CLI_MODE: "burst", FAKE_EVENT_COUNT: "12500" },
+    },
+    { onFrame: (frame) => frames.push(frame) },
+  );
+  assert.equal(result.finalReceived, true);
+  assert.equal(result.error, undefined);
+  assert.equal(frames.length, 12_502);
 });
 
 test("client consumes deterministic NDJSON and reports a final result", async () => {

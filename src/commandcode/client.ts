@@ -94,7 +94,10 @@ export class CommandCodeClient {
       const consume = (frames: CommandCodeFrame[]) => {
         for (const frame of frames) {
           eventCount += 1;
-          if (eventCount > (options.maxEvents ?? 10_000))
+          if (
+            options.maxEvents !== undefined &&
+            eventCount > options.maxEvents
+          )
             throw new ProtocolError("CommandCode emitted too many events.");
           if (frame.type === "result") finalReceived = true;
           callbacks.onFrame(frame, options.generation);

@@ -6,6 +6,7 @@
 .playwright-cli/**
 .private/**
 .release-*/**
+.stress/**
 .vscode-test*.mjs
 .prettierignore
 node_modules/**

@@ -22,6 +22,8 @@ let selectedModel =
   document.querySelector(".model-option.selected")?.dataset.model || "auto";
 let busy = false;
 let persistTimer;
+let renderTimer;
+let renderNeedsScroll = false;
 let sequence = 0;
 const savedUiState = vscode.getState() || {};
 let transcript = restoreTranscript(savedUiState.transcript);
@@ -456,6 +458,8 @@ function appendInline(parent, value) {
 }
 
 function renderTranscript({ scroll = true } = {}) {
+  window.clearTimeout(renderTimer);
+  renderTimer = undefined;
   const wasNearBottom =
     conversation.scrollHeight -
       conversation.scrollTop -
@@ -475,6 +479,17 @@ function renderTranscript({ scroll = true } = {}) {
   }
   schedulePersist();
   if (scroll && wasNearBottom) scrollToBottom(true);
+}
+
+function scheduleTranscriptRender({ scroll = true } = {}) {
+  renderNeedsScroll ||= scroll;
+  if (renderTimer) return;
+  renderTimer = window.setTimeout(() => {
+    renderTimer = undefined;
+    const shouldScroll = renderNeedsScroll;
+    renderNeedsScroll = false;
+    renderTranscript({ scroll: shouldScroll });
+  }, 100);
 }
 
 function submit(text = prompt.value) {
@@ -1007,14 +1022,14 @@ window.addEventListener("message", ({ data }) => {
       activity.status = ["running", "done", "error"].includes(data.status)
         ? data.status
         : "running";
-      renderTranscript();
+      scheduleTranscriptRender();
     }
   }
   if (data.type === "assistantDelta") {
     const turn = currentTurn();
     if (turn) {
       turn.text = safeText(`${turn.text}${safeText(data.text)}`);
-      renderTranscript();
+      scheduleTranscriptRender();
     }
   }
   if (data.type === "assistant") {
