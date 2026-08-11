@@ -34,10 +34,7 @@ export class TurnMessageBuffer {
       this.schedule();
       return;
     }
-    if (
-      message.type === "assistantDelta" &&
-      typeof message.text === "string"
-    ) {
+    if (message.type === "assistantDelta" && typeof message.text === "string") {
       this.delta = `${this.delta}${message.text}`.slice(-this.maxDeltaChars);
       this.schedule();
       return;

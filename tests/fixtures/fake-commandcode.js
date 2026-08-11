@@ -57,8 +57,7 @@ if (process.env.FAKE_CLI_MODE === "burst") {
     }),
   );
   process.stdout.write(`${lines.join("\n")}\n`, () => {});
-}
-else if (process.env.FAKE_CLI_MODE === "silent-after-start") {
+} else if (process.env.FAKE_CLI_MODE === "silent-after-start") {
   const delayMs = Number(process.env.FAKE_DELAY_MS || 250);
   console.log(
     JSON.stringify({
@@ -79,8 +78,7 @@ else if (process.env.FAKE_CLI_MODE === "silent-after-start") {
       }),
     );
   }, delayMs);
-}
-else if (process.env.FAKE_CLI_MODE === "tree") {
+} else if (process.env.FAKE_CLI_MODE === "tree") {
   const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
     stdio: "ignore",
   });

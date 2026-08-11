@@ -21,9 +21,7 @@ const { redactDiagnostic } = require("./dist/commandcode/errors.js");
 const { parseWebviewRequest } = require("./dist/contracts.js");
 const { parseModelList } = require("./dist/commandcode/models.js");
 const { CommandCodeClient } = require("./dist/commandcode/client.js");
-const {
-  TurnMessageBuffer,
-} = require("./dist/commandcode/messageBuffer.js");
+const { TurnMessageBuffer } = require("./dist/commandcode/messageBuffer.js");
 const { validateBranchName } = require("./dist/git.js");
 
 const CLI_PROBE_TIMEOUT_MS = 60_000;
