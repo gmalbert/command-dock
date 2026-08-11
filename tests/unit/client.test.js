@@ -27,7 +27,7 @@ test("client allows a healthy process to stay quiet after startup", async () => 
       args: [],
       cwd: process.cwd(),
       generation: 5,
-      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "250" },
+      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "1000" },
     },
     { onFrame: () => {} },
   );
@@ -43,7 +43,7 @@ test("client can opt into finite inactivity limits for smoke tests", async () =>
       args: [],
       cwd: process.cwd(),
       generation: 6,
-      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "250" },
+      env: { FAKE_CLI_MODE: "silent-after-start", FAKE_DELAY_MS: "1000" },
       timeouts: { inactivityMs: 50 },
     },
     { onFrame: () => {} },
