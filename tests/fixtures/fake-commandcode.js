@@ -79,9 +79,8 @@ if (process.env.FAKE_CLI_MODE === "silent-after-start") {
       }),
     );
   }, delayMs);
-  process.exit(0);
 }
-if (process.env.FAKE_CLI_MODE === "tree") {
+else if (process.env.FAKE_CLI_MODE === "tree") {
   const child = spawn(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
     stdio: "ignore",
   });
