@@ -2,7 +2,7 @@
   "name": "command-dock",
   "displayName": "CommandDock",
   "description": "An independent, secure VS Code chat interface for the Command Code CLI.",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "publisher": "gmalbert",
   "license": "MIT",
   "engines": {

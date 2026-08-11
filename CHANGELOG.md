@@ -4,6 +4,8 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-08-11
+
 ### Fixed
 
 - Keep healthy Command Code turns alive without production inactivity, event-count, or wall-clock kills, and coalesce high-frequency host/webview progress updates to prevent long streaming runs from overwhelming the UI.
