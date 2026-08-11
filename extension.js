@@ -21,6 +21,9 @@ const { redactDiagnostic } = require("./dist/commandcode/errors.js");
 const { parseWebviewRequest } = require("./dist/contracts.js");
 const { parseModelList } = require("./dist/commandcode/models.js");
 const { CommandCodeClient } = require("./dist/commandcode/client.js");
+const {
+  TurnMessageBuffer,
+} = require("./dist/commandcode/messageBuffer.js");
 const { validateBranchName } = require("./dist/git.js");
 
 const CLI_PROBE_TIMEOUT_MS = 60_000;
@@ -1242,7 +1245,10 @@ class CommandDockViewProvider {
           candidate.id === this.context.workspaceState.get("selectedModel"),
       ) ||
       this.models[0];
-    const send = (payload) => this.view?.webview.postMessage(payload);
+    const turnMessages = new TurnMessageBuffer((payload) => {
+      void this.view?.webview.postMessage(payload);
+    });
+    const send = (payload) => turnMessages.send(payload);
     const workspace = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
     if (!workspace) {
       send({
@@ -1462,7 +1468,6 @@ class CommandDockViewProvider {
         cwd: workspace,
         generation: runGeneration,
         env: createInvocationEnvironment(invocation),
-        maxEvents: 10_000,
       },
       {
         onFrame: (frame, generation) => {
@@ -1473,7 +1478,10 @@ class CommandDockViewProvider {
     );
     this.activeProcess = undefined;
     this.setRunActive(false);
-    if (result.generation !== this.generation && !result.cancelled) return;
+    if (result.generation !== this.generation && !result.cancelled) {
+      turnMessages.dispose();
+      return;
+    }
     if (result.cancelled || this.wasCancelled) {
       send({
         type: "activity",
@@ -1506,11 +1514,12 @@ class CommandDockViewProvider {
       this.agentAuthorizedGeneration = undefined;
       send({ type: "permissionModeSelected", mode: "analyze" });
     }
+    turnMessages.dispose();
   }
 
   handleAgentEvent(event, send) {
     if (!event || typeof event.type !== "string") return;
-    const id = event.toolCallId || event.id || event.type;
+    const id = String(event.toolCallId || event.id || event.type).slice(0, 200);
     if (event.type === "run_start") {
       send({
         type: "activity",
@@ -1564,6 +1573,8 @@ class CommandDockViewProvider {
     }
     if (event.type === "tool_running") {
       this.toolStarts.set(id, Date.now());
+      if (this.toolStarts.size > 1_000)
+        this.toolStarts.delete(this.toolStarts.keys().next().value);
       send({
         type: "activity",
         id,
@@ -1596,6 +1607,7 @@ class CommandDockViewProvider {
       const elapsed = this.toolStarts.has(id)
         ? `${((Date.now() - this.toolStarts.get(id)) / 1000).toFixed(1)}s`
         : "";
+      this.toolStarts.delete(id);
       send({
         type: "activity",
         id,
@@ -1620,6 +1632,7 @@ class CommandDockViewProvider {
         "permission_prompt",
       ].includes(event.type)
     ) {
+      this.toolStarts.delete(id);
       send({
         type: "activity",
         id,

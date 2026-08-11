@@ -72,6 +72,14 @@ test("turn arguments do not duplicate the JavaScript CLI entrypoint", () => {
   assert.match(run, /buildRunArguments/);
 });
 
+test("production turns batch webview traffic without an event-count kill", () => {
+  const run = host.slice(
+    host.indexOf("async runCommandCodeTurnCore"),
+    host.indexOf("handleAgentEvent"),
+  );
+  assert.match(run, /new TurnMessageBuffer/);
+  assert.doesNotMatch(run, /maxEvents/);
+});
 test("backend status and model probes are single-flight", () => {
   const statusStart = host.indexOf("async getCliStatus");
   const status = host.slice(

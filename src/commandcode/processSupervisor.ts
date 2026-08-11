@@ -1,21 +1,19 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 
 export interface SupervisorTimeouts {
-  startupMs: number;
-  inactivityMs: number;
-  totalMs: number;
+  startupMs?: number;
+  inactivityMs?: number;
+  totalMs?: number;
 }
 
-export const DEFAULT_TIMEOUTS: SupervisorTimeouts = {
-  startupMs: 60_000,
-  inactivityMs: 120_000,
-  totalMs: 30 * 60_000,
-};
+// Interactive terminals do not kill a healthy CLI merely because it is quiet or
+// has been running for a long time. Production turns keep that same contract;
+// callers such as deterministic smoke tests may still opt into finite limits.
+export const DEFAULT_TIMEOUTS: Readonly<SupervisorTimeouts> = {};
 
 export class ProcessSupervisor {
   private child?: ChildProcessWithoutNullStreams;
   private timers: NodeJS.Timeout[] = [];
-  private startedOutput = false;
   private stopped = false;
 
   constructor(
@@ -45,7 +43,6 @@ export class ProcessSupervisor {
   }
 
   noteOutput(onTimeout: (kind: keyof SupervisorTimeouts) => void): void {
-    this.startedOutput = true;
     this.clearNamed("startupMs");
     this.clearNamed("inactivityMs");
     this.arm("inactivityMs", this.timeouts.inactivityMs, onTimeout);
@@ -89,9 +86,10 @@ export class ProcessSupervisor {
 
   private arm(
     name: keyof SupervisorTimeouts,
-    delay: number,
+    delay: number | undefined,
     callback: (kind: keyof SupervisorTimeouts) => void,
   ): void {
+    if (delay === undefined || !Number.isFinite(delay) || delay <= 0) return;
     const timer = setTimeout(() => callback(name), delay);
     Object.assign(timer, { commandCodeTimerName: name });
     timer.unref();
