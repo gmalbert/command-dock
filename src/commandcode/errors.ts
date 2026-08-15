@@ -6,46 +6,60 @@ export interface ActionableError {
 const EXIT_ERRORS: Record<number, ActionableError> = {
   1: {
     message:
-      "CommandCode returned a general error. Review the details and retry.",
+      "Command Code returned a general error. Review the details and retry.",
     action: "retry",
   },
   3: {
-    message: "CommandCode could not authenticate this account.",
+    message: "Command Code could not authenticate this account.",
     action: "signIn",
   },
   4: {
     message:
-      "CommandCode denied the requested operation. Review workspace and agent permissions.",
+      "Command Code denied the requested operation. Review workspace and agent permissions.",
   },
   5: {
-    message: "CommandCode is temporarily rate limited. Wait briefly and retry.",
+    message: "Command Code is temporarily rate limited. Wait briefly and retry.",
     action: "retry",
   },
   6: {
     message:
-      "CommandCode could not reach the service. Check the network and retry.",
+      "Command Code could not reach the service. Check the network and retry.",
     action: "retry",
   },
   7: {
     message:
-      "The CommandCode service returned an error. Retry or check service status.",
+      "The Command Code service returned an error. Retry or check service status.",
     action: "retry",
   },
   8: {
-    message: "CommandCode reached the configured turn limit.",
+    message: "Command Code reached the configured turn limit.",
     action: "resume",
   },
-  130: { message: "CommandCode was interrupted." },
+  130: { message: "Command Code was interrupted." },
 };
+
+const LAUNCH_FAILURE =
+  /ENOENT|EACCES|EPERM|is not recognized|not recognized|no such file or directory|command not found|spawn\b/i;
+
+export function isLaunchFailure(value: string): boolean {
+  return typeof value === "string" && LAUNCH_FAILURE.test(value);
+}
 
 export function mapExitCode(code: number | null, stderr = ""): ActionableError {
   const normalized = stderr.toLowerCase();
   if (/sign.?in|log.?in|unauthorized|authentication/.test(normalized))
     return EXIT_ERRORS[3]!;
+  if (isLaunchFailure(stderr)) {
+    return {
+      message:
+        "Command Code CLI could not be started. Install it with `npm install -g command-code` or set the `commandDock.cliPath` setting, then reload VS Code.",
+      action: "settings",
+    };
+  }
   if (/credit|billing|balance|usage limit|usage exceeded/.test(normalized)) {
     return {
       message:
-        "The CommandCode account has insufficient credits or reached a usage limit.",
+        "The Command Code account has insufficient credits or reached a usage limit.",
       action: "upgrade",
     };
   }
@@ -56,8 +70,8 @@ export function mapExitCode(code: number | null, stderr = ""): ActionableError {
     (code !== null && EXIT_ERRORS[code]) || {
       message:
         code === null
-          ? "CommandCode ended unexpectedly."
-          : `CommandCode exited with code ${code}.`,
+          ? "Command Code ended unexpectedly."
+          : `Command Code exited with code ${code}.`,
       action: "retry",
     }
   );

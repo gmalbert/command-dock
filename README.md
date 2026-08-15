@@ -8,15 +8,16 @@ CommandDock is an independent VS Code chat interface for compatible Command Code
 
 - Runs real Command Code sessions and streams tool progress and responses.
 - Loads the model catalog from your installed CLI, including provider and capability metadata.
-- Starts in **Analyze** mode, mapped to Command Code's read-only `plan` permission.
-- Offers per-turn **Agent** authorization for file edits and shell commands, then returns to Analyze.
+- Starts in **Analyze** mode, mapped to Command Code's read-only `plan` permission. The first time you open the chat you pick your default launch mode — `analyze`, `agent`, or `yolo` — and it applies to every new chat (change any time with the shield button, `/analyze`, `/agent`, or `/yolo`).
+- Offers a persistent **Agent** mode for file edits and shell commands; switch back to **Analyze** any time.
+- Offers an explicit **YOLO** mode that passes `--yolo` to Command Code, skipping its confirmation for file edits and shell commands. It is only enabled after a warning confirmation and is shown in the composer and turn trail while active.
 - Attaches explicit workspace files, resumes a linked Command Code session, and creates Git branches.
 - Attaches the active file/selection, open editors, diagnostics, per-repository Git diffs, files, explicit workspace folders, and supported images with visible, removable context chips and an exact context preview.
 - Renders bounded, structured transcripts with safe Markdown, semantic tables, accessible syntax highlighting, and exact code-block copying.
 - Shows expandable tool cards, elapsed time, reported targets, workspace-constrained Open File actions, and Git Open Changes routing.
 - Supports retry after errors plus edit-and-resend and regenerate actions for completed turns.
 - Provides model search, favorites, recent models, provider grouping, capability badges, and reasoning effort when the CLI supports them.
-- Routes `/plan`, `/review`, `/model`, `/sessions`, `/fork`, `/rename`, `/rewind`, `/worktree`, `/skills`, `/mcp`, `/mods`, `/memory`, `/taste`, and `/status` without sending unsupported slash text to the model.
+- Routes `/plan`, `/review`, `/analyze`, `/agent`, `/yolo`, `/model`, `/sessions`, `/fork`, `/rename`, `/rewind`, `/worktree`, `/skills`, `/mcp`, `/mods`, `/memory`, `/taste`, and `/status` without sending unsupported slash text to the model.
 - Supports cancellation, timeouts, redacted diagnostics, Workspace Trust, and CLI version checks.
 
 ## Requirements
@@ -109,7 +110,7 @@ After the direct update finishes, run **Developer: Reload Window**, then **Comma
 2. Select the CommandDock terminal-and-dock icon in the Activity Bar.
 3. Confirm the green backend indicator. If it is unavailable, run **CommandDock: Sign In** or configure an absolute CLI path in user settings.
 4. Pick a model. The list comes from `cmd --list-models` and follows your account and installed CLI.
-5. Keep **Analyze** selected for exploration, or choose **Agent** and authorize the individual mutating turn.
+5. Keep **Analyze** selected for exploration, or choose **Agent** to auto-accept every turn until you switch back to **Analyze**.
 6. Send a prompt. Stop ends the complete CLI process tree.
 
 The selected model is a launch override for the linked session. Model availability and billing depend on Command Code; consult [models](https://commandcode.ai/docs/reference/cli/models) and [pricing and limits](https://commandcode.ai/docs/resources/pricing-limits).
@@ -124,7 +125,7 @@ Analyze is the default for new sessions and after reloads, trust changes, failur
 
 Agent maps to `--permission-mode auto-accept`. Before each Agent turn, VS Code shows a modal confirmation explaining that Command Code may edit files and run shell commands with the user's VS Code permissions. Those commands may access the network or files outside the workspace if the OS account permits it. Authorization is never persisted and automatically returns to Analyze after the turn.
 
-Headless CLI mode does not expose interactive per-tool approval to this webview. Agent therefore remains explicit, per-turn auto-accept rather than implying granular approvals.
+Headless CLI mode does not expose interactive per-tool approval to this webview. Agent therefore remains an explicit, persistent auto-accept mode rather than implying granular approvals.
 
 Read the upstream [security and privacy documentation](https://commandcode.ai/docs/resources/security).
 

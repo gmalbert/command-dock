@@ -17,7 +17,7 @@ const {
   MINIMUM_CLI_VERSION,
 } = require("./dist/commandcode/discovery.js");
 const { classifyCliStatus } = require("./dist/commandcode/status.js");
-const { redactDiagnostic } = require("./dist/commandcode/errors.js");
+const { isLaunchFailure, redactDiagnostic } = require("./dist/commandcode/errors.js");
 const { parseWebviewRequest } = require("./dist/contracts.js");
 const { parseModelList } = require("./dist/commandcode/models.js");
 const { CommandCodeClient } = require("./dist/commandcode/client.js");
@@ -46,9 +46,17 @@ class CommandDockViewProvider {
       context.workspaceState.get("commandDockSessionId");
     this.contextStateKey = `contextFiles:${this.windowKey}`;
     this.contextDirectoriesKey = `contextDirectories:${this.windowKey}`;
+    this.sessionHistory = context.workspaceState.get("commandDockSessionHistory", []);
     this.wasCancelled = false;
-    /** @type {'analyze' | 'agent'} */
-    this.permissionMode = "analyze";
+    const configuredMode = vscode.workspace
+      .getConfiguration("commandDock")
+      .get("launchMode", "analyze");
+    /** @type {'analyze' | 'agent' | 'yolo'} */
+    this.launchMode = ["analyze", "agent", "yolo"].includes(configuredMode)
+      ? configuredMode
+      : "analyze";
+    /** @type {'analyze' | 'agent' | 'yolo'} */
+    this.permissionMode = this.launchMode;
     this.generation = 0;
     this.client = new CommandCodeClient();
     this.probeProcesses = new Set();
@@ -127,6 +135,10 @@ class CommandDockViewProvider {
       }
       switch (message.type) {
         case "ready":
+          this.view?.webview.postMessage({
+            type: "permissionModeSelected",
+            mode: this.permissionMode,
+          });
           await Promise.all([
             this.postRepositoryState(),
             this.postBackendStatus(),
@@ -135,6 +147,9 @@ class CommandDockViewProvider {
           break;
         case "newChat":
           this.newChat();
+          break;
+        case "confirmNewChat":
+          await this.confirmNewChat();
           break;
         case "pickContext":
           await this.pickContext();
@@ -199,15 +214,11 @@ class CommandDockViewProvider {
             this.sessionId ? ["--resume", this.sessionId] : [],
           );
           break;
-        case "setAnalyze":
-          this.permissionMode = "analyze";
-          this.view?.webview.postMessage({
-            type: "permissionModeSelected",
-            mode: "analyze",
-          });
+        case "setPermissionMode":
+          await this.setPermissionMode(message.mode);
           break;
         case "manageSessions":
-          this.openCliSurface(["--resume"]);
+          await this.showSessionPicker();
           break;
         case "manageSkills":
           this.openCliSurface(["skills"]);
@@ -263,16 +274,24 @@ class CommandDockViewProvider {
     this.contextFiles = [];
     this.contextDirectories = [];
     this.contextSnippets = [];
-    this.permissionMode = "analyze";
-    this.agentAuthorizedGeneration = undefined;
+    this.permissionMode = this.launchMode;
     void this.context.workspaceState.update(this.contextStateKey, []);
     void this.context.workspaceState.update(this.contextDirectoriesKey, []);
     this.view?.webview.postMessage({
       type: "permissionModeSelected",
-      mode: "analyze",
+      mode: this.permissionMode,
     });
     this.view?.webview.postMessage({ type: "contextUpdated", files: [] });
     this.view?.webview.postMessage({ type: "newChat" });
+  }
+
+  async confirmNewChat() {
+    const confirmation = await vscode.window.showWarningMessage(
+      "Start a new chat? The current draft and any running turn will be discarded.",
+      { modal: true },
+      "Start New Chat",
+    );
+    if (confirmation === "Start New Chat") this.newChat();
   }
 
   async cancelTurn() {
@@ -302,12 +321,18 @@ class CommandDockViewProvider {
     else delete windows[this.windowKey];
     const latest =
       sessionId || (links.latest === previous ? undefined : links.latest);
+    if (sessionId && sessionId !== previous) {
+      const history = this.sessionHistory.filter((entry) => entry.id !== sessionId);
+      history.unshift({ id: sessionId, ts: Date.now() });
+      this.sessionHistory = history.slice(0, 50);
+    }
     void Promise.all([
       this.context.workspaceState.update("commandDockSessionLinks", {
         latest,
         windows,
       }),
       this.context.workspaceState.update("commandDockSessionId", undefined),
+      this.context.workspaceState.update("commandDockSessionHistory", this.sessionHistory),
     ]);
   }
 
@@ -455,6 +480,7 @@ class CommandDockViewProvider {
     await Promise.all([
       this.context.workspaceState.update("commandDockSessionId", undefined),
       this.context.workspaceState.update("commandDockSessionLinks", undefined),
+      this.context.workspaceState.update("commandDockSessionHistory", undefined),
       this.context.workspaceState.update("contextFiles", undefined),
       this.context.workspaceState.update(this.contextStateKey, undefined),
       this.context.workspaceState.update(this.contextDirectoriesKey, undefined),
@@ -470,10 +496,11 @@ class CommandDockViewProvider {
       ),
     ]);
     this.sessionId = undefined;
+    this.sessionHistory = [];
     this.contextFiles = [];
     this.contextDirectories = [];
     this.contextSnippets = [];
-    this.permissionMode = "analyze";
+    this.permissionMode = this.launchMode;
     this.models = MODELS.slice(0, 1);
     this.newChat();
     this.view?.webview.postMessage({ type: "localDataCleared" });
@@ -497,6 +524,59 @@ class CommandDockViewProvider {
     void vscode.window.showInformationMessage(
       "The next message will resume the linked Command Code session.",
     );
+  }
+
+  async showSessionPicker() {
+    const history = this.sessionHistory;
+    if (!history.length) {
+      void vscode.window.showInformationMessage(
+        "No prior Command Code sessions found. Sessions are recorded as you use the extension.",
+      );
+      return;
+    }
+    const currentId = this.sessionId;
+    const items = history.map((entry) => ({
+      label: entry.id.slice(0, 12),
+      description: entry.id === currentId ? "Current" : "",
+      detail: `Session ${entry.id.slice(0, 8)}… · ${new Date(entry.ts).toLocaleString()}`,
+      sessionId: entry.id,
+    }));
+    /** @type {any} */
+    const pick = await vscode.window.showQuickPick(items, {
+      title: "Command Code Sessions",
+      placeHolder: "Pick a session to resume, or open in terminal",
+      matchOnDescription: true,
+      matchOnDetail: true,
+    });
+    if (!pick) return;
+    /** @type {any} */
+    const action = await vscode.window.showQuickPick(
+      [
+        { label: "$(play) Resume in extension", value: "resume" },
+        { label: "$(terminal) Open in terminal", value: "terminal" },
+        { label: "$(debug-restart) Fork in terminal", value: "fork" },
+      ],
+      {
+        title: `Session ${pick.sessionId.slice(0, 12)}`,
+        placeHolder: "What would you like to do?",
+      },
+    );
+    if (!action) return;
+    if (action.value === "resume") {
+      this.sessionId = pick.sessionId;
+      this.view?.webview.postMessage({
+        type: "sessionState",
+        resumable: true,
+        sessionId: pick.sessionId.slice(0, 8),
+      });
+      void vscode.window.showInformationMessage(
+        `Linked to session ${pick.sessionId.slice(0, 12)}. The next message will resume it.`,
+      );
+    } else if (action.value === "terminal") {
+      this.openCliSurface(["--resume", pick.sessionId]);
+    } else if (action.value === "fork") {
+      this.openCliSurface(["--resume", pick.sessionId, "--fork-session"]);
+    }
   }
 
   forkSession() {
@@ -532,10 +612,11 @@ class CommandDockViewProvider {
   }
 
   openInteractiveSession(command) {
-    this.openCliSurface(this.sessionId ? ["--resume", this.sessionId] : []);
-    void vscode.window.showInformationMessage(
-      `Command Code opened in the terminal. Run ${command} there.`,
-    );
+    const subcommand = String(command).replace(/^\/+/, "");
+    this.openCliSurface([
+      subcommand,
+      ...(this.sessionId ? ["--resume", this.sessionId] : []),
+    ]);
   }
 
   async signIn() {
@@ -666,6 +747,13 @@ class CommandDockViewProvider {
             "Allow Command Code to edit files and run shell commands in this workspace.",
           value: "agent",
         },
+        {
+          label: "$(warning) YOLO",
+          description: current === "yolo" ? "Current" : "",
+          detail:
+            "Also pass --yolo, skipping confirmation for file edits and shell commands. Use with care.",
+          value: "yolo",
+        },
       ],
       {
         title: "CommandDock permission mode",
@@ -674,7 +762,14 @@ class CommandDockViewProvider {
     );
     if (!choice) return;
 
-    if (choice.value === "agent" && current !== "agent") {
+    if (choice.value === "yolo") {
+      const confirmation = await vscode.window.showWarningMessage(
+        "YOLO mode passes --yolo to Command Code and skips confirmation for file edits and shell commands in this workspace.",
+        { modal: true },
+        "Enable YOLO Mode",
+      );
+      if (confirmation !== "Enable YOLO Mode") return;
+    } else if (choice.value === "agent" && current !== "agent") {
       const confirmation = await vscode.window.showWarningMessage(
         "Agent mode allows Command Code to edit files and run shell commands in this workspace.",
         { modal: true },
@@ -683,10 +778,104 @@ class CommandDockViewProvider {
       if (confirmation !== "Enable Agent Mode") return;
     }
 
-    this.permissionMode = choice.value === "agent" ? "agent" : "analyze";
+    this.permissionMode =
+      choice.value === "yolo"
+        ? "yolo"
+        : choice.value === "agent"
+          ? "agent"
+          : "analyze";
     this.view?.webview.postMessage({
       type: "permissionModeSelected",
       mode: choice.value,
+    });
+  }
+
+  async setPermissionMode(mode) {
+    if (!["analyze", "agent", "yolo"].includes(mode)) return;
+    if (!vscode.workspace.isTrusted) {
+      void vscode.window.showWarningMessage(
+        "Trust this workspace before enabling Agent or YOLO mode.",
+      );
+      return;
+    }
+    if (mode === "yolo") {
+      const confirmation = await vscode.window.showWarningMessage(
+        "YOLO mode passes --yolo to Command Code and skips confirmation for file edits and shell commands in this workspace.",
+        { modal: true },
+        "Enable YOLO Mode",
+      );
+      if (confirmation !== "Enable YOLO Mode") return;
+    } else if (mode === "agent" && this.permissionMode !== "agent") {
+      const confirmation = await vscode.window.showWarningMessage(
+        "Agent mode allows Command Code to edit files and run shell commands in this workspace.",
+        { modal: true },
+        "Enable Agent Mode",
+      );
+      if (confirmation !== "Enable Agent Mode") return;
+    }
+    this.permissionMode = mode;
+    this.view?.webview.postMessage({
+      type: "permissionModeSelected",
+      mode,
+    });
+  }
+
+  async chooseInitialLaunchMode() {
+    if (this.context.globalState.get("commandDock.launchModeChosen")) return;
+    if (!vscode.workspace.isTrusted) return;
+    const choice = await vscode.window.showQuickPick(
+      [
+        {
+          label: "$(search) Analyze",
+          description: "Safe default",
+          detail:
+            "Read and inspect the workspace. File edits and shell commands are blocked.",
+          value: "analyze",
+        },
+        {
+          label: "$(tools) Agent",
+          detail:
+            "Allow Command Code to edit files and run shell commands in this workspace.",
+          value: "agent",
+        },
+        {
+          label: "$(warning) YOLO",
+          description: "Unsafe",
+          detail:
+            "Also pass --yolo, skipping confirmation for file edits and shell commands. Use with care.",
+          value: "yolo",
+        },
+      ],
+      {
+        title: "CommandDock launch mode",
+        placeHolder:
+          "Choose how Command Code should run for new chats. Change any time with the shield button, /analyze, /agent, or /yolo.",
+      },
+    );
+    if (!choice) return;
+    if (choice.value === "yolo") {
+      const confirmation = await vscode.window.showWarningMessage(
+        "YOLO mode passes --yolo to Command Code and skips confirmation for file edits and shell commands.",
+        { modal: true },
+        "Enable YOLO Mode",
+      );
+      if (confirmation !== "Enable YOLO Mode") return;
+    }
+    const selectedMode =
+      choice.value === "yolo"
+        ? "yolo"
+        : choice.value === "agent"
+          ? "agent"
+          : "analyze";
+    this.launchMode = selectedMode;
+    this.permissionMode = selectedMode;
+    await vscode.workspace
+      .getConfiguration("commandDock")
+      .update("launchMode", selectedMode, vscode.ConfigurationTarget.Global);
+    await this.context.globalState.update("commandDock.launchModeChosen", true);
+    this.view?.webview.postMessage({
+      type: "permissionModeSelected",
+      mode: selectedMode,
     });
   }
 
@@ -1092,7 +1281,7 @@ class CommandDockViewProvider {
       status: invocation.detected === false ? "missing" : "ready",
       label:
         invocation.detected === false
-          ? "CLI path not found"
+          ? "The Command Code CLI path is invalid. Update commandDock.cliPath in Settings."
           : "Command Code CLI ready",
     });
   }
@@ -1267,7 +1456,7 @@ class CommandDockViewProvider {
 
     if (!this.context.workspaceState.get("commandDockProjectTrusted", false)) {
       const trust = await vscode.window.showWarningMessage(
-        `Trust “${vscode.workspace.name || path.basename(workspace)}” in Command Code? The CLI will be allowed to inspect files in this workspace. Agent writes still require separate per-turn authorization.`,
+        `Trust “${vscode.workspace.name || path.basename(workspace)}” in Command Code? The CLI will be allowed to inspect files in this workspace. Agent mode stays active until you switch it back to Analyze.`,
         { modal: true },
         "Trust in Command Code",
       );
@@ -1309,31 +1498,8 @@ class CommandDockViewProvider {
     const config = vscode.workspace.getConfiguration("commandDock");
     const maxTurns = Math.max(1, Math.min(500, config.get("maxTurns", 100)));
     const permissionMode = this.permissionMode;
+    const yolo = permissionMode === "yolo";
     const runGeneration = ++this.generation;
-    if (
-      permissionMode === "agent" &&
-      this.agentAuthorizedGeneration !== runGeneration
-    ) {
-      const confirmation = await vscode.window.showWarningMessage(
-        `Authorize this Agent turn for “${text.trim().slice(0, 120)}${text.trim().length > 120 ? "…" : ""}” with ${this.contextFiles.length + this.contextDirectories.length + this.contextSnippets.length} attached context item(s)? It can edit files and run shell commands with your VS Code permissions, including network or files outside this workspace.`,
-        { modal: true },
-        "Authorize This Turn",
-      );
-      if (
-        confirmation !== "Authorize This Turn" ||
-        runGeneration !== this.generation
-      ) {
-        this.permissionMode = "analyze";
-        send({ type: "permissionModeSelected", mode: "analyze" });
-        send({
-          type: "turnError",
-          message:
-            "Agent authorization was not granted. Switched back to Analyze mode.",
-        });
-        return;
-      }
-      this.agentAuthorizedGeneration = runGeneration;
-    }
     const missingContext = [];
     const unsafeContext = [];
     for (const uri of [...this.contextFiles, ...this.contextDirectories]) {
@@ -1388,6 +1554,7 @@ class CommandDockViewProvider {
         maxTurns,
         contextFiles: attachedContext,
         effort,
+        yolo,
       }),
     ];
     const additionalDirectories = new Map();
@@ -1404,7 +1571,12 @@ class CommandDockViewProvider {
       type: "activity",
       id: "run",
       label: "Starting Command Code",
-      detail: permissionMode === "agent" ? "Agent mode" : "Analyze mode",
+      detail:
+        permissionMode === "yolo"
+          ? "YOLO mode"
+          : permissionMode === "agent"
+            ? "Agent mode"
+            : "Analyze mode",
       status: "running",
     });
     send({
@@ -1419,9 +1591,11 @@ class CommandDockViewProvider {
       id: "permission",
       label: "Permission boundary",
       detail:
-        permissionMode === "agent"
-          ? "Per-turn auto-accept authorized · --permission-mode auto-accept · --trust after explicit project trust"
-          : "Read-only plan mode · --permission-mode plan · --trust after explicit project trust",
+        permissionMode === "yolo"
+          ? "Unsafe --yolo mode · skips confirmation for file edits and shell commands · --trust after explicit project trust"
+          : permissionMode === "agent"
+            ? "Auto-accept authorized · --permission-mode auto-accept · --trust after explicit project trust"
+            : "Read-only plan mode · --permission-mode plan · --trust after explicit project trust",
       status: "done",
     });
     this.wasCancelled = false;
@@ -1506,11 +1680,6 @@ class CommandDockViewProvider {
         status: "done",
       });
       send({ type: "turnFinished" });
-    }
-    if (permissionMode === "agent") {
-      this.permissionMode = "analyze";
-      this.agentAuthorizedGeneration = undefined;
-      send({ type: "permissionModeSelected", mode: "analyze" });
     }
     turnMessages.dispose();
   }
@@ -1691,7 +1860,7 @@ class CommandDockViewProvider {
         <body>
           <div class="shell">
             <header class="topbar">
-              <div class="brand"><img src="${logoUri}" alt="" /><span>CommandDock</span><button class="backend-pill" id="backend-pill" title="Command Code CLI status" aria-label="Command Code CLI status"></button></div>
+              <div class="brand"><img src="${logoUri}" alt="" /><span>CommandDock</span><button class="backend-pill" id="backend-pill" title="Command Code CLI status" aria-label="Command Code CLI status"><span class="pill-dot"></span><span class="pill-label">Checking…</span></button></div>
               <div class="top-actions">
                 <button class="icon-button" id="create-branch" title="Create Git branch" aria-label="Create Git branch">${icons.branch}</button>
                 <button class="icon-button" id="new-chat" title="New chat" aria-label="New chat">${icons.plus}</button>
@@ -1724,9 +1893,16 @@ class CommandDockViewProvider {
                 </div>
               </section>
               <section id="messages" class="messages" hidden></section>
+              <section id="onboarding" class="onboarding" hidden>
+                <div class="mark"><img src="${logoUri}" alt="" /></div>
+                <div class="eyebrow">GET STARTED</div>
+                <h1 id="onboarding-title"></h1>
+                <p id="onboarding-body"></p>
+                <div id="onboarding-actions" class="onboarding-actions"></div>
+              </section>
             </main>
 
-            <footer class="composer-wrap">
+            <footer class="composer-wrap" id="composer-wrap">
               <div class="model-popover" id="model-popover" role="listbox" aria-label="Choose model" hidden>
                 <div class="popover-title"><span>MODELS</span><span id="model-count">${this.models.length - 1} AVAILABLE</span></div>
                 <label class="model-search">${icons.search}<input id="model-search" type="search" placeholder="Search models…" autocomplete="off" /></label>
@@ -1738,19 +1914,19 @@ class CommandDockViewProvider {
                 <div class="file-chips" id="file-chips"></div>
               </div>
               <div class="composer" id="composer">
-                <div class="slash-popover" id="slash-popover" hidden><button data-slash="/plan "><strong>/plan</strong><span>Plan in read-only mode</span></button><button data-slash="/review"><strong>/review</strong><span>Review current changes</span></button><button data-slash="/model"><strong>/model</strong><span>Choose a model</span></button><button data-slash="/sessions"><strong>/sessions</strong><span>Manage CLI sessions</span></button><button data-slash="/fork"><strong>/fork</strong><span>Fork linked session</span></button><button data-slash="/rename"><strong>/rename</strong><span>Rename linked session</span></button><button data-slash="/rewind"><strong>/rewind</strong><span>Open checkpoint rewind</span></button><button data-slash="/worktree"><strong>/worktree</strong><span>Manage CLI worktrees</span></button><button data-slash="/skills"><strong>/skills</strong><span>Manage skills</span></button><button data-slash="/mcp"><strong>/mcp</strong><span>Manage MCP servers</span></button><button data-slash="/mods"><strong>/mods</strong><span>Manage mods</span></button><button data-slash="/memory"><strong>/memory</strong><span>Manage memory</span></button><button data-slash="/taste"><strong>/taste</strong><span>Manage taste</span></button><button data-slash="/status"><strong>/status</strong><span>Refresh backend status</span></button><button data-slash="/update"><strong>/update</strong><span>Update Command Code CLI</span></button></div>
-                <textarea id="prompt" rows="1" aria-label="Message Command" placeholder="Ask Command to build, explain, or fix…"></textarea>
+                <div class="slash-popover" id="slash-popover" hidden><button data-slash="/yolo"><strong>/yolo</strong><span>Unsafe: skip confirmations</span></button><button data-slash="/agent"><strong>/agent</strong><span>Auto-accept edits</span></button><button data-slash="/analyze"><strong>/analyze</strong><span>Read-only mode</span></button><button data-slash="/plan "><strong>/plan</strong><span>Plan in read-only mode</span></button><button data-slash="/review"><strong>/review</strong><span>Review current changes</span></button><button data-slash="/model"><strong>/model</strong><span>Choose a model</span></button><button data-slash="/sessions"><strong>/sessions</strong><span>Manage CLI sessions</span></button><button data-slash="/fork"><strong>/fork</strong><span>Fork linked session</span></button><button data-slash="/rename"><strong>/rename</strong><span>Rename linked session</span></button><button data-slash="/rewind"><strong>/rewind</strong><span>Open checkpoint rewind</span></button><button data-slash="/worktree"><strong>/worktree</strong><span>Manage CLI worktrees</span></button><button data-slash="/skills"><strong>/skills</strong><span>Manage skills</span></button><button data-slash="/mcp"><strong>/mcp</strong><span>Manage MCP servers</span></button><button data-slash="/mods"><strong>/mods</strong><span>Manage mods</span></button><button data-slash="/memory"><strong>/memory</strong><span>Manage memory</span></button><button data-slash="/taste"><strong>/taste</strong><span>Manage taste</span></button><button data-slash="/status"><strong>/status</strong><span>Refresh backend status</span></button><button data-slash="/update"><strong>/update</strong><span>Update Command Code CLI</span></button></div>
+                <textarea id="prompt" rows="1" aria-label="Message Command" placeholder="Ask Command to build, explain, or fix…  (type / for commands)"></textarea>
                 <div class="composer-footer">
                   <div class="composer-options">
                     <button class="quiet-button" id="add-context" title="Add context">${icons.at}<span>Add context</span></button>
-                    <button class="quiet-button" id="permission-mode" title="Choose permission mode">${icons.shield}<span id="permission-label">${permissionMode === "agent" ? "Agent" : "Analyze"}</span></button>
+                    <button class="quiet-button" id="permission-mode" title="Choose permission mode">${icons.shield}<span id="permission-label">${permissionMode === "yolo" ? "YOLO" : permissionMode === "agent" ? "Agent" : "Analyze"}</span></button>
                     <label class="quiet-button effort-control" title="Reasoning effort"><span class="sr-only">Reasoning effort</span><select id="effort" aria-label="Reasoning effort"><option value="">Auto effort</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option></select></label>
                     <button class="quiet-button model-button" id="model-button" title="Choose model" aria-haspopup="listbox" aria-expanded="false"><span class="model-dot"></span><span id="model-label">${selectedModel.label}</span>${icons.chevron}</button>
                   </div>
                   <button class="send-button" id="send" aria-label="Send message" disabled>${icons.arrowUp}</button>
                 </div>
               </div>
-              <div class="meta-row"><button class="branch-status" id="branch-status" title="Create Git branch">${icons.branch}<span id="branch-label">Loading branch…</span></button><span>Shift+Enter for new line</span></div>
+              <div class="meta-row"><button class="branch-status" id="branch-status" title="Create Git branch">${icons.branch}<span id="branch-label">Loading branch…</span></button><span>Type / for commands · Shift+Enter for new line</span></div>
             </footer>
           </div>
           <script nonce="${nonce}" src="${scriptUri}"></script>
@@ -1778,7 +1954,10 @@ function escapeHtml(value) {
 
 function formatCliError(error) {
   const detail = error instanceof Error ? error.message : String(error);
-  return `Could not start CommandDock: ${detail}`;
+  if (isLaunchFailure(detail)) {
+    return "Command Code CLI was not found or could not be started. Install it with `npm install -g command-code` or set the `commandDock.cliPath` setting.";
+  }
+  return `Could not start Command Code: ${detail}`;
 }
 
 function probeCli(invocation, args, timeoutMs, trackProcess) {
@@ -2317,7 +2496,7 @@ function activate(context) {
       ),
     ),
     vscode.commands.registerCommand("commandDock.manageSessions", () =>
-      provider.openCliSurface(["--resume"]),
+      provider.showSessionPicker(),
     ),
     vscode.commands.registerCommand("commandDock.manageSkills", () =>
       provider.openCliSurface(["skills"]),
@@ -2351,6 +2530,8 @@ function activate(context) {
     ),
   );
   context.subscriptions.push(provider);
+
+  void provider.chooseInitialLaunchMode();
 
   if (
     vscode.extensions.getExtension("commandcode.commandcode-vscode") &&

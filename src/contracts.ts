@@ -5,6 +5,7 @@ export type WebviewRequest =
       type:
         | "ready"
         | "newChat"
+        | "confirmNewChat"
         | "pickContext"
         | "openSettings"
         | "createBranch"
@@ -16,7 +17,6 @@ export type WebviewRequest =
         | "copyDiagnostics"
         | "signIn"
         | "openInCli"
-        | "setAnalyze"
         | "manageSessions"
         | "manageSkills"
         | "manageMcp"
@@ -38,6 +38,10 @@ export type WebviewRequest =
   | { type: "copy"; text: string }
   | { type: "openExternal"; url: string }
   | {
+      type: "setPermissionMode";
+      mode: "analyze" | "agent" | "yolo";
+    }
+  | {
       type: "prompt";
       text: string;
       model: string;
@@ -51,6 +55,7 @@ export function parseWebviewRequest(
   const simple = new Set([
     "ready",
     "newChat",
+    "confirmNewChat",
     "pickContext",
     "openSettings",
     "createBranch",
@@ -62,7 +67,6 @@ export function parseWebviewRequest(
     "copyDiagnostics",
     "signIn",
     "openInCli",
-    "setAnalyze",
     "manageSessions",
     "manageSkills",
     "manageMcp",
@@ -102,6 +106,15 @@ export function parseWebviewRequest(
     /^https:\/\//i.test(value.url)
   ) {
     return { type: value.type, url: value.url };
+  }
+  if (
+    value.type === "setPermissionMode" &&
+    ["analyze", "agent", "yolo"].includes(String(value.mode))
+  ) {
+    return {
+      type: value.type,
+      mode: value.mode as "analyze" | "agent" | "yolo",
+    };
   }
   if (
     value.type === "prompt" &&

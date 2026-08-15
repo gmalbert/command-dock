@@ -92,25 +92,79 @@ input:focus-visible {
   height: 18px;
 }
 .backend-pill {
-  width: 10px;
-  height: 10px;
-  padding: 2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
   border: 0;
-  margin-left: 1px;
+  margin-left: 8px;
+  padding: 4px 9px 4px 8px;
+  border-radius: 999px;
+  background: var(--vscode-toolbar-hoverBackground, rgba(127, 127, 127, 0.12));
+  opacity: 0.9;
+  cursor: pointer;
+  color: var(--cc-muted);
+  font: 600 11px/1 var(--vscode-ui-font-family, var(--vscode-font-family));
+  overflow: hidden;
+}
+.backend-pill:hover {
+  opacity: 1;
+}
+.backend-pill .pill-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--cc-muted);
-  opacity: 0.65;
-  cursor: pointer;
+}
+.backend-pill .pill-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .backend-pill.ready {
-  background: #6fdc8c;
+  color: #6fdc8c;
   opacity: 1;
-  box-shadow: 0 0 0 2px color-mix(in srgb, #6fdc8c 14%, transparent);
+}
+.backend-pill.ready .pill-dot {
+  background: #6fdc8c;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #6fdc8c 16%, transparent);
 }
 .backend-pill.missing,
 .backend-pill.error {
+  color: var(--vscode-errorForeground);
+}
+.backend-pill.missing .pill-dot,
+.backend-pill.error .pill-dot {
   background: var(--vscode-errorForeground);
-  opacity: 1;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--vscode-errorForeground) 16%, transparent);
+}
+.backend-pill.signed-out {
+  color: var(--vscode-charts-yellow, #e5c07b);
+}
+.backend-pill.signed-out .pill-dot {
+  background: var(--vscode-charts-yellow, #e5c07b);
+  box-shadow: 0 0 0 3px color-mix(in srgb, #e5c07b 16%, transparent);
+}
+.backend-pill.incompatible {
+  color: #d19a66;
+}
+.backend-pill.incompatible .pill-dot {
+  background: #d19a66;
+  box-shadow: 0 0 0 3px color-mix(in srgb, #d19a66 16%, transparent);
+}
+.backend-pill.checking .pill-dot {
+  animation: pill-pulse 1.2s ease-in-out infinite;
+}
+@keyframes pill-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 .top-actions {
   flex: 0 0 auto;
@@ -204,6 +258,55 @@ h1 {
   color: var(--cc-muted);
   margin: 0 0 23px;
   max-width: 300px;
+}
+
+.onboarding {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 30px 22px 24px;
+}
+.onboarding .mark {
+  margin-bottom: 18px;
+}
+.onboarding h1 {
+  font-size: 20px;
+}
+.onboarding p {
+  color: var(--cc-muted);
+  margin: 0 0 20px;
+  max-width: 320px;
+  overflow-wrap: anywhere;
+}
+.onboarding-actions {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+.onboarding-action {
+  border: 1px solid var(--cc-border);
+  background: color-mix(in srgb, var(--cc-panel) 82%, transparent);
+  color: var(--vscode-foreground);
+  font: 560 12.5px/1 var(--vscode-ui-font-family, var(--vscode-font-family));
+  padding: 9px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
+}
+.onboarding-action:hover {
+  border-color: color-mix(in srgb, var(--vscode-focusBorder) 55%, transparent);
+  background: var(--cc-panel);
 }
 .suggestions {
   width: 100%;
@@ -754,6 +857,13 @@ textarea::placeholder {
 .quiet-button svg {
   width: 13px;
   height: 13px;
+}
+#permission-mode[data-mode="yolo"] {
+  color: var(--vscode-errorForeground);
+  font-weight: 650;
+}
+#permission-mode[data-mode="agent"] {
+  color: var(--vscode-charts-yellow, #e5c07b);
 }
 .effort-control {
   flex: 0 1 76px;

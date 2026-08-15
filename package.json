@@ -2,7 +2,7 @@
   "name": "command-dock",
   "displayName": "CommandDock",
   "description": "An independent, secure VS Code chat interface for the Command Code CLI.",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "publisher": "gmalbert",
   "license": "MIT",
   "engines": {
@@ -74,6 +74,17 @@
           "minimum": 1,
           "maximum": 500,
           "description": "Maximum agent turns for each Command Code request."
+        },
+        "commandDock.launchMode": {
+          "type": "string",
+          "enum": [
+            "analyze",
+            "agent",
+            "yolo"
+          ],
+          "default": "analyze",
+          "scope": "window",
+          "markdownDescription": "Default mode for new chats. `analyze` is read-only. `agent` auto-accepts file edits and shell commands. `yolo` also passes `--yolo`, which skips Command Code's confirmation for file edits and shell commands — use with care. You can switch per chat with the shield button, or `/analyze`, `/agent`, `/yolo`."
         }
       }
     },

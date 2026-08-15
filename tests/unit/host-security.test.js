@@ -96,14 +96,23 @@ test("backend status and model probes are single-flight", () => {
   assert.match(backend, /refreshModelCatalog\(invocation, status\.version\)/);
 });
 
-test("agent authorization is per turn and reset after completion", () => {
+test("agent mode passes auto-accept without per-turn authorization dialog", () => {
   const run = host.slice(
     host.indexOf("async runCommandCodeTurn"),
     host.indexOf("handleAgentEvent"),
   );
-  assert.match(run, /Authorize This Turn/);
-  assert.match(run, /permissionMode = ["']analyze["']/);
+  assert.doesNotMatch(run, /Authorize This Turn/);
   assert.doesNotMatch(host, /workspaceState\.update\(["']permissionMode["']/);
+});
+
+test("yolo launch mode wires --yolo through the run path", () => {
+  const run = host.slice(
+    host.indexOf("async runCommandCodeTurnCore"),
+    host.indexOf("handleAgentEvent"),
+  );
+  assert.match(run, /const yolo = permissionMode === ["']yolo["']/);
+  assert.match(run, /yolo,/);
+  assert.match(run, /Unsafe --yolo mode/);
 });
 
 test("interactive CLI surfaces re-check Workspace Trust", () => {
@@ -187,6 +196,7 @@ test("clear local data removes workspace and global extension-owned state", () =
   );
   for (const key of [
     "commandDockSessionLinks",
+    "commandDockSessionHistory",
     "selectedModel",
     "commandDockProjectTrusted",
     "modelCatalog",

@@ -15,7 +15,7 @@ Workspace source and Git state, local files reachable by the VS Code account, sh
 ## Primary threats and controls
 
 - **Malicious repository selects an executable:** CLI path is machine-scoped, ignored in untrusted workspaces, absolute, type-checked, real-pathed, and rejects symlinks.
-- **Silent write authority:** Analyze maps to Plan; Agent is per-turn, modal, visible, audited in UI activity, and resets.
+- **Silent write authority:** Analyze maps to Plan; Agent is persistent auto-accept, visible, audited in UI activity, and returns to Analyze only when you switch it back.
 - **Webview injection/persistent XSS:** strict CSP, local resources, nonce scripts, typed bounded messages, DOM `textContent`, structured versioned persistence, HTTPS-only external links.
 - **Protocol/memory denial of service:** line, buffer, event, transcript, activity, stderr, and text limits plus startup/inactivity/total timeouts.
 - **Orphaned tools:** group/process-tree termination on stop, reload, new chat, timeout, and deactivate.

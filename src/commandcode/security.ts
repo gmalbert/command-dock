@@ -1,6 +1,6 @@
 import path from "node:path";
 
-export type PermissionMode = "analyze" | "agent";
+export type PermissionMode = "analyze" | "agent" | "yolo";
 
 export interface RunArguments {
   prompt: string;
@@ -10,6 +10,7 @@ export interface RunArguments {
   maxTurns: number;
   contextFiles?: readonly string[];
   effort?: "low" | "medium" | "high";
+  yolo?: boolean;
 }
 
 export function buildRunArguments(options: RunArguments): string[] {
@@ -35,10 +36,14 @@ export function buildRunArguments(options: RunArguments): string[] {
     args.push("--model", options.model);
   if (options.sessionId) args.push("--resume", options.sessionId);
   // Plan is the CLI's documented read-only mode. Auto-accept is deliberately
-  // limited to an explicitly authorized Agent turn.
+  // limited to an explicitly authorized Agent or YOLO turn. --yolo skips the
+  // CLI's confirmation for file edits and shell commands.
+  if (options.yolo) args.push("--yolo");
   args.push(
     "--permission-mode",
-    options.permissionMode === "agent" ? "auto-accept" : "plan",
+    options.permissionMode === "agent" || options.yolo
+      ? "auto-accept"
+      : "plan",
   );
   if (options.effort) args.push("--effort", options.effort);
   return args;

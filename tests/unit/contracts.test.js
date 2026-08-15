@@ -6,6 +6,18 @@ test("accepts only known, bounded webview requests", () => {
   assert.deepEqual(parseWebviewRequest({ type: "ready", unexpected: true }), {
     type: "ready",
   });
+  assert.deepEqual(parseWebviewRequest({ type: "confirmNewChat" }), {
+    type: "confirmNewChat",
+  });
+  assert.deepEqual(
+    parseWebviewRequest({ type: "setPermissionMode", mode: "yolo" }),
+    { type: "setPermissionMode", mode: "yolo" },
+  );
+  assert.equal(
+    parseWebviewRequest({ type: "setPermissionMode", mode: "sudo" }),
+    undefined,
+  );
+  assert.equal(parseWebviewRequest({ type: "setAnalyze" }), undefined);
   assert.deepEqual(parseWebviewRequest({ type: "updateCli" }), {
     type: "updateCli",
   });

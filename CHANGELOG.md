@@ -4,6 +4,25 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-08-15
+
+### Added
+
+- One-time launch-mode choice when you first open the chat — Analyze, Agent, or YOLO — saved to `commandDock.launchMode` and applied to every new chat. Switch per chat with the shield button or `/analyze`, `/agent`, `/yolo`. YOLO passes `--yolo` to Command Code, skipping its confirmation for file edits and shell commands, and is shown in the composer and turn trail while active.
+- Get-started onboarding panel with install, docs, settings, refresh, sign-in, and update actions for missing, error, signed-out, and incompatible CLI states.
+- Friendly CLI launch-failure errors with a labeled status pill and actionable buttons (Copy install command, Open Settings, Retry, Resume, Update CLI).
+- New Chat now confirms discarding a draft or running turn through a host dialog, and `/plan` works without extra text.
+- `/plan`, `/review`, `/analyze`, `/agent`, and `/yolo` are discoverable in the slash popover and placeholder hints.
+
+### Changed
+
+- New chats keep your chosen launch mode instead of resetting to Analyze.
+- Documentation now reflects persistent Agent mode and the new launch-mode options.
+
+### Fixed
+
+- `formatCliError` and error mapping no longer clobber friendly launch-failure guidance with raw spawn messages.
+
 ## [0.1.6] - 2026-08-11
 
 ### Fixed
@@ -55,7 +74,7 @@ All notable changes use [Keep a Changelog](https://keepachangelog.com/) conventi
 - Independent CommandDock identity, original terminal-and-dock artwork, and GitHub pre-release beta distribution.
 - Dedicated CommandDock Activity Bar chat with real Command Code CLI NDJSON streaming.
 - Dynamic installed-CLI model catalog and reasoning capability metadata.
-- Read-only Analyze mode and per-turn Agent authorization.
+- Read-only Analyze mode and persistent Agent auto-accept mode.
 - Structured transcript persistence, safe Markdown, code copying, context removal, Git branch creation, session recovery, and redacted diagnostics.
 - Structured editor-selection, diagnostics, Git-diff, multi-root file, and vision-model context with an exact preview and bounded payloads.
 - Explicit folder context plus real-path containment that rejects symlink/junction escapes.
