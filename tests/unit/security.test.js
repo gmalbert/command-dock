@@ -29,6 +29,33 @@ test("agent mode includes auto-accept only when explicitly selected", () => {
   assert.deepEqual(args.slice(-2), ["--permission-mode", "auto-accept"]);
 });
 
+test("yolo mode passes --yolo and auto-accept only when explicitly selected", () => {
+  const args = buildRunArguments({
+    prompt: "fix it",
+    permissionMode: "yolo",
+    maxTurns: 10,
+    yolo: true,
+  });
+  assert.ok(args.includes("--yolo"));
+  assert.equal(args.includes("--auto-accept"), false);
+  assert.deepEqual(args.slice(-2), ["--permission-mode", "auto-accept"]);
+});
+
+test("analyze and agent modes never inject --yolo", () => {
+  const analyze = buildRunArguments({
+    prompt: "p",
+    permissionMode: "analyze",
+    maxTurns: 5,
+  });
+  const agent = buildRunArguments({
+    prompt: "p",
+    permissionMode: "agent",
+    maxTurns: 5,
+  });
+  assert.equal(analyze.includes("--yolo"), false);
+  assert.equal(agent.includes("--yolo"), false);
+});
+
 test("prompt is passed as an argument without shell interpolation", () => {
   const prompt = "explain $(whoami) & del important.txt";
   const args = buildRunArguments({

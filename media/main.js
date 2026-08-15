@@ -6,6 +6,8 @@ const welcome = document.getElementById("welcome");
 const messages = document.getElementById("messages");
 const conversation = document.getElementById("conversation");
 const composer = document.getElementById("composer");
+const composerWrap = document.getElementById("composer-wrap");
+const onboarding = document.getElementById("onboarding");
 const modelButton = document.getElementById("model-button");
 const modelPopover = document.getElementById("model-popover");
 const modelLabel = document.getElementById("model-label");
@@ -35,6 +37,28 @@ let recentModels = Array.isArray(savedUiState.recentModels)
   : [];
 let currentCatalog = [];
 let backendStatus = "checking";
+let currentMode = "analyze";
+const MODES = ["analyze", "agent", "yolo"];
+const ERROR_ACTIONS = [
+  "signIn",
+  "retry",
+  "upgrade",
+  "settings",
+  "resume",
+  "none",
+];
+
+function modeDisplay(mode) {
+  return mode === "yolo" ? "YOLO" : mode === "agent" ? "Agent" : "Analyze";
+}
+
+function setMode(mode) {
+  if (!MODES.includes(mode)) return;
+  currentMode = mode;
+  byId("permission-label").textContent = modeDisplay(mode);
+  byId("permission-mode").dataset.mode = mode;
+  vscode.postMessage({ type: "setPermissionMode", mode });
+}
 
 function byId(id) {
   return document.getElementById(id);
@@ -103,6 +127,9 @@ function restoreTranscript(value) {
         status: status === "pending" ? "cancelled" : status,
         text: safeText(entry.text),
         summary: safeText(entry.summary, 500),
+        action: ERROR_ACTIONS.includes(entry.action)
+          ? entry.action
+          : undefined,
         error:
           status === "pending"
             ? "Interrupted by reload — send a follow-up to continue the saved Command Code session."
@@ -133,6 +160,107 @@ function autosize() {
 function showMessages() {
   welcome.hidden = true;
   messages.hidden = false;
+}
+
+function pillLabelFor(status) {
+  switch (status) {
+    case "ready":
+      return "Ready";
+    case "error":
+      return "CLI error";
+    case "missing":
+      return "CLI not found";
+    case "signed-out":
+      return "Sign in required";
+    case "incompatible":
+      return "Update required";
+    case "checking":
+      return "Checking…";
+    default:
+      return status;
+  }
+}
+
+function setBackendState(status, label) {
+  const pill = byId("backend-pill");
+  pill.className = `backend-pill ${safeText(status, 20)}`;
+  pill.title = safeText(label, 200);
+  pill.querySelector(".pill-label").textContent = pillLabelFor(status);
+  backendStatus = safeText(status, 20);
+  const unusable = ["error", "missing", "signed-out", "incompatible"].includes(
+    backendStatus,
+  );
+  const kind =
+    backendStatus === "error" &&
+    /not found|install|could not be started|spawn|ENOENT|EACCES|EPERM|command not found|is not recognized/i.test(
+      label || "",
+    )
+      ? "missing"
+      : backendStatus;
+  composerWrap.hidden = unusable;
+  onboarding.hidden = !unusable;
+  if (unusable) {
+    welcome.hidden = true;
+    messages.hidden = true;
+    renderOnboarding(kind, label);
+    return;
+  }
+  if (transcript.length) showMessages();
+  else {
+    messages.hidden = true;
+    welcome.hidden = false;
+  }
+}
+
+function renderOnboarding(status, label) {
+  const content = {
+    missing: {
+      title: "Command Code CLI not found",
+      body: "CommandDock needs the Command Code CLI to run. Install it with npm, then refresh. You can also point CommandDock at an existing CLI via Settings.",
+      actions: [
+        ["copy", "npm install -g command-code", "Copy install command"],
+        ["openExternal", "https://commandcode.ai/docs", "Open setup docs"],
+        ["openSettings", "", "Open Settings"],
+        ["refreshStatus", "", "Refresh"],
+      ],
+    },
+    error: {
+      title: "Command Code is unavailable",
+      body: safeText(label, 2_000),
+      actions: [
+        ["refreshStatus", "", "Refresh Status"],
+        ["openSettings", "", "Open Settings"],
+      ],
+    },
+    "signed-out": {
+      title: "Sign in to Command Code",
+      body: "CommandDock is connected, but you aren’t signed in yet. Sign in to start chatting.",
+      actions: [
+        ["signIn", "", "Sign In"],
+        ["refreshStatus", "", "Refresh"],
+      ],
+    },
+    incompatible: {
+      title: "Update Command Code",
+      body: "Your installed Command Code CLI is too old for CommandDock. Update it to continue.",
+      actions: [
+        ["updateCli", "", "Update CLI"],
+        ["refreshStatus", "", "Refresh"],
+      ],
+    },
+  }[status];
+  if (!content) return;
+  byId("onboarding-title").textContent = content.title;
+  byId("onboarding-body").textContent = content.body;
+  byId("onboarding-actions").replaceChildren(
+    ...content.actions.map(([type, value, labelText]) => {
+      const button = createElement("button", "onboarding-action", labelText);
+      button.type = "button";
+      button.dataset.type = type;
+      button.dataset.value = value;
+      return button;
+    }),
+  );
 }
 
 function scrollToBottom(force = false) {
@@ -204,7 +332,7 @@ function renderUserMessage(entry) {
     createElement("div", "user-bubble", entry.text),
   );
   const metadata = [
-    entry.mode === "agent" ? "Agent" : "Analyze",
+    modeDisplay(entry.mode),
     entry.model,
     entry.effort ? `${entry.effort} effort` : "",
     ...(entry.context || []),
@@ -248,15 +376,40 @@ function renderAssistantMessage(entry) {
     );
     article.append(error);
     const actions = createElement("div", "error-actions");
-    const retry = createElement("button", "retry-turn", "Retry");
-    retry.type = "button";
-    actions.append(retry);
-    if (/sign in|auth/i.test(entry.error || "")) {
-      const signIn = createElement("button", "sign-in", "Sign in");
+    const action = entry.action;
+    if (
+      action === "signIn" ||
+      (action === undefined && /sign in|auth/i.test(entry.error || ""))
+    ) {
+      const signIn = createElement("button", "error-action", "Sign in");
       signIn.type = "button";
+      signIn.dataset.action = "signIn";
       actions.append(signIn);
     }
-    article.append(actions);
+    if (action === "upgrade") {
+      const upgrade = createElement("button", "error-action", "Update CLI");
+      upgrade.type = "button";
+      upgrade.dataset.action = "updateCli";
+      actions.append(upgrade);
+    }
+    if (action === "settings") {
+      const settings = createElement("button", "error-action", "Open Settings");
+      settings.type = "button";
+      settings.dataset.action = "openSettings";
+      actions.append(settings);
+    }
+    if (action === "resume") {
+      const resume = createElement("button", "error-action", "Resume Session");
+      resume.type = "button";
+      resume.dataset.action = "resumeLatest";
+      actions.append(resume);
+    }
+    if (action === undefined || action === "retry") {
+      const retry = createElement("button", "retry-turn", "Retry");
+      retry.type = "button";
+      actions.append(retry);
+    }
+    if (actions.children.length) article.append(actions);
   }
   if (entry.status === "cancelled") {
     article.append(
@@ -500,6 +653,27 @@ function submit(text = prompt.value) {
       toggleModelPopover(true);
       return;
     }
+    if (command === "/analyze") {
+      setMode("analyze");
+      prompt.value = "";
+      slashPopover.hidden = true;
+      autosize();
+      return;
+    }
+    if (command === "/agent") {
+      setMode("agent");
+      prompt.value = "";
+      slashPopover.hidden = true;
+      autosize();
+      return;
+    }
+    if (command === "/yolo") {
+      setMode("yolo");
+      prompt.value = "";
+      slashPopover.hidden = true;
+      autosize();
+      return;
+    }
     const surfaces = {
       "/sessions": "manageSessions",
       "/skills": "manageSkills",
@@ -524,13 +698,14 @@ function submit(text = prompt.value) {
     if (command === "/review")
       clean =
         "Review my current Git changes for correctness, security, and regressions.";
-    else if (command === "/plan" && rest.length) {
-      clean = `Create an implementation plan for: ${rest.join(" ")}`;
-      byId("permission-label").textContent = "Analyze";
-      vscode.postMessage({ type: "setAnalyze" });
+    else if (command === "/plan") {
+      clean = rest.length
+        ? `Create an implementation plan for: ${rest.join(" ")}`
+        : "Create an implementation plan for the current workspace.";
+      setMode("analyze");
     } else {
       addLocalError(
-        `Unknown or incomplete command: ${command}. Try /plan, /review, /model, /sessions, /fork, /rename, /rewind, /worktree, /skills, /mcp, /mods, /memory, /taste, /status, or /update.`,
+        `Unknown or incomplete command: ${command}. Try /analyze, /agent, /yolo, /plan, /review, /model, /sessions, /fork, /rename, /rewind, /worktree, /skills, /mcp, /mods, /memory, /taste, /status, or /update.`,
       );
       return;
     }
@@ -540,8 +715,7 @@ function submit(text = prompt.value) {
   const context = [...document.querySelectorAll(".file-chip")].map((chip) =>
     safeText(chip.dataset.file, 1_000),
   );
-  const mode =
-    byId("permission-label").textContent === "Agent" ? "agent" : "analyze";
+  const mode = currentMode;
   transcript.push(
     {
       id: `${id}-user`,
@@ -585,6 +759,7 @@ function addLocalError(message) {
     status: "error",
     text: "",
     summary: "",
+    action: "none",
     error: safeText(message, 2_000),
     activities: [],
   });
@@ -724,13 +899,10 @@ send.addEventListener("click", () =>
   busy ? vscode.postMessage({ type: "cancel" }) : submit(),
 );
 byId("new-chat").addEventListener("click", () => {
-  if (
-    (busy || prompt.value.trim()) &&
-    !window.confirm(
-      "Start a new chat and discard the current draft or running turn?",
-    )
-  )
+  if (busy || prompt.value.trim()) {
+    vscode.postMessage({ type: "confirmNewChat" });
     return;
+  }
   vscode.postMessage({ type: "newChat" });
 });
 byId("create-branch").addEventListener("click", () =>
@@ -742,11 +914,14 @@ byId("branch-status").addEventListener("click", () =>
 byId("more").addEventListener("click", () =>
   vscode.postMessage({ type: "openSettings" }),
 );
-byId("backend-pill").addEventListener("click", () =>
-  vscode.postMessage({
-    type: backendStatus === "signed-out" ? "signIn" : "openSettings",
-  }),
-);
+byId("backend-pill").addEventListener("click", () => {
+  if (backendStatus === "signed-out") vscode.postMessage({ type: "signIn" });
+  else if (backendStatus === "incompatible")
+    vscode.postMessage({ type: "updateCli" });
+  else if (["error", "missing"].includes(backendStatus))
+    vscode.postMessage({ type: "refreshStatus" });
+  else vscode.postMessage({ type: "openSettings" });
+});
 byId("add-context").addEventListener("click", () =>
   vscode.postMessage({ type: "pickContext" }),
 );
@@ -864,9 +1039,9 @@ messages.addEventListener("click", (event) => {
     vscode.postMessage({ type: "openFile", path: openFile.dataset.path });
     return;
   }
-  const signIn = event.target.closest(".sign-in");
-  if (signIn) {
-    vscode.postMessage({ type: "signIn" });
+  const actionButton = event.target.closest(".error-action");
+  if (actionButton?.dataset.action) {
+    vscode.postMessage({ type: actionButton.dataset.action });
     return;
   }
   const retry = event.target.closest(".retry-turn");
@@ -936,14 +1111,13 @@ messages.addEventListener("click", (event) => {
 window.addEventListener("message", ({ data }) => {
   if (!data || typeof data.type !== "string") return;
   if (data.type === "backendStatus") {
-    const pill = byId("backend-pill");
-    pill.className = `backend-pill ${safeText(data.status, 20)}`;
-    pill.title = safeText(data.label, 200);
-    backendStatus = safeText(data.status, 20);
+    setBackendState(data.status, data.label);
   }
   if (data.type === "permissionModeSelected") {
-    byId("permission-label").textContent =
-      data.mode === "agent" ? "Agent" : "Analyze";
+    if (!MODES.includes(data.mode)) return;
+    currentMode = data.mode;
+    byId("permission-label").textContent = modeDisplay(data.mode);
+    byId("permission-mode").dataset.mode = data.mode;
   }
   if (data.type === "contextUpdated") {
     const files = Array.isArray(data.files)
@@ -1047,6 +1221,9 @@ window.addEventListener("message", ({ data }) => {
     if (turn) {
       turn.status = "error";
       turn.error = safeText(data.message, 12_000) || "Unknown error";
+      turn.action = ERROR_ACTIONS.includes(data.action)
+        ? data.action
+        : undefined;
       renderTranscript();
     }
     busy = false;
@@ -1083,6 +1260,32 @@ byId("file-chips").addEventListener("click", (event) => {
     vscode.postMessage({ type: "removeContext", file: chip.dataset.file });
 });
 
+onboarding.addEventListener("click", (event) => {
+  const button = event.target.closest(".onboarding-action");
+  if (!button?.dataset.type) return;
+  const type = button.dataset.type;
+  const value = button.dataset.value || "";
+  if (type === "copy") {
+    vscode.postMessage({ type: "copy", text: value });
+    const original = button.textContent;
+    button.textContent = "Copied";
+    window.setTimeout(() => {
+      button.textContent = original;
+    }, 1200);
+    return;
+  }
+  if (type === "openExternal") {
+    vscode.postMessage({ type: "openExternal", url: value });
+    return;
+  }
+  vscode.postMessage({ type });
+});
+
 renderTranscript({ scroll: false });
+const initialLabel = byId("permission-label").textContent.trim().toLowerCase();
+currentMode =
+  initialLabel === "yolo" ? "yolo" : initialLabel === "agent" ? "agent" : "analyze";
+byId("permission-mode").dataset.mode = currentMode;
+setBackendState("checking", "Checking Command Code…");
 autosize();
 vscode.postMessage({ type: "ready" });

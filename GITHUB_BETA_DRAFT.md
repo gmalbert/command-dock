@@ -6,7 +6,7 @@ CommandDock 0.1.5 beta 1
 
 ## Summary
 
-CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This beta fixes Windows CLI launch failures, decouples real turns from the network-backed status indicator, and ensures completed activity indicators settle correctly while retaining the dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and per-turn Agent authorization.
+CommandDock is an independent VS Code chat interface for the separately installed Command Code CLI. This beta fixes Windows CLI launch failures, decouples real turns from the network-backed status indicator, and ensures completed activity indicators settle correctly while retaining the dedicated Activity Bar chat, dynamic model selection, explicit workspace context, safe Markdown and code rendering, Git branch controls, session routing, read-only Analyze mode, and persistent Agent mode.
 
 CommandDock now launches JavaScript CLI installations with the system Node.js runtime that installed them rather than VS Code's embedded Electron runtime. It also passes the CLI entrypoint only once per chat turn. Together these changes prevent the status-check timeout and `too many arguments` failures seen on Windows.
 
@@ -37,7 +37,7 @@ Full instructions: [BETA_DISTRIBUTION.md](BETA_DISTRIBUTION.md)
 ## Safety notes
 
 - Analyze is the default and maps to the CLI's read-only plan permission.
-- Agent is explicit per-turn auto-accept and can edit files or run commands with the user's VS Code permissions.
+- Agent is a persistent auto-accept mode that can edit files or run commands with the user's VS Code permissions, and returns to Analyze when the user switches it back.
 - Headless mode does not currently expose granular per-tool approval to CommandDock.
 - Review [KNOWN_LIMITATIONS.md](KNOWN_LIMITATIONS.md), [PRIVACY.md](PRIVACY.md), and [SECURITY.md](SECURITY.md) before testing.
 

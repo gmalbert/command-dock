@@ -1,5 +1,10 @@
 import { type ChildProcessWithoutNullStreams } from "node:child_process";
-import { mapExitCode, redactDiagnostic, type ActionableError } from "./errors";
+import {
+  isLaunchFailure,
+  mapExitCode,
+  redactDiagnostic,
+  type ActionableError,
+} from "./errors";
 import {
   NdjsonParser,
   ProtocolError,
@@ -133,7 +138,8 @@ export class CommandCodeClient {
           !this.cancelled && !finalReceived
             ? mapExitCode(code, failure || cleanCliMessage(stderr))
             : undefined;
-        if (error && failure) error.message = failure;
+        if (error && failure && !isLaunchFailure(failure))
+          error.message = failure;
         resolve({
           generation: options.generation,
           cancelled: this.cancelled,

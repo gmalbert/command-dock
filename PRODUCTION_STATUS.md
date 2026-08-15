@@ -11,7 +11,7 @@ This status records evidence for the independent GitHub pre-release path in [BET
 
 - Machine-scoped absolute CLI override; relative, missing, symlinked, workspace-local, and unsupported targets are rejected.
 - Untrusted and virtual workspaces are disabled in the manifest and checked again before CLI and Git operations.
-- Command Code project trust is explicit. Agent authority is per turn, never persisted, visible in the turn trail, and automatically resets to Analyze.
+- Command Code project trust is explicit. Agent authority is a persistent auto-accept mode, never persisted, visible in the turn trail, and returns to Analyze only when you switch it back.
 - Structured transcript persistence, safe DOM rendering, strict CSP/nonces, bounded host/webview contracts, bounded NDJSON, sanitized environment inheritance, path validation, and redacted diagnostics are implemented.
 - Threat model, security policy, incident response, privacy disclosure, and support process exist.
 

@@ -8,7 +8,7 @@ Preserve logs without collecting prompts/source, identify affected extension and
 
 - **Compromised release:** revoke affected GitHub credentials, remove unsafe release assets, preserve an incident record, publish a clean version under a new tag, notify testers, and audit repository and Actions access. Never silently replace a versioned VSIX.
 - **Credential leak:** revoke immediately, remove from history/artifacts/caches, audit usage, and rotate downstream credentials.
-- **Permission regression:** halt rollout, instruct users to disable Agent mode or the extension, ship a preview fix, independently verify Plan and per-turn authorization, then promote.
+- **Permission regression:** halt rollout, instruct users to disable Agent mode or the extension, ship a preview fix, independently verify Plan and Agent-mode authorization, then promote.
 - **Bad auto-update:** stop staged rollout, restore the last known-good package, publish rollback instructions, preserve compatible state migrations, and monitor support signals.
 
 ## Recovery and learning

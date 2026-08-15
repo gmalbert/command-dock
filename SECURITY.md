@@ -20,7 +20,7 @@ Target response times:
 - Untrusted workspaces cannot activate agent execution.
 - Executable overrides are machine-scoped, absolute, existing, non-symlinked supported files.
 - Analyze uses Command Code plan mode.
-- Agent permission is confirmed per turn and never persisted.
+- Agent mode is a persistent auto-accept mode, visible in the turn trail, and returns to Analyze only when you switch it back.
 - The webview and CLI are validated, bounded protocol boundaries.
 - Child process trees are terminated on cancellation and shutdown.
 - Diagnostics redact common secret formats and user home paths and omit raw prompts/source by default.
