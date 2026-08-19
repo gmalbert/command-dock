@@ -1893,6 +1893,11 @@ class CommandDockViewProvider {
                 </div>
               </section>
               <section id="messages" class="messages" hidden></section>
+              <div id="typing-indicator" class="typing-indicator" hidden>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
               <section id="onboarding" class="onboarding" hidden>
                 <div class="mark"><img src="${logoUri}" alt="" /></div>
                 <div class="eyebrow">GET STARTED</div>

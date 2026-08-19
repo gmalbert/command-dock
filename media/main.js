@@ -8,6 +8,7 @@ const conversation = document.getElementById("conversation");
 const composer = document.getElementById("composer");
 const composerWrap = document.getElementById("composer-wrap");
 const onboarding = document.getElementById("onboarding");
+const typingIndicator = document.getElementById("typing-indicator");
 const modelButton = document.getElementById("model-button");
 const modelPopover = document.getElementById("model-popover");
 const modelLabel = document.getElementById("model-label");
@@ -160,6 +161,13 @@ function autosize() {
 function showMessages() {
   welcome.hidden = true;
   messages.hidden = false;
+}
+
+function updateTypingIndicator() {
+  const last = transcript[transcript.length - 1];
+  const show = last && last.role === "assistant" && last.status === "pending";
+  typingIndicator.hidden = !show;
+  if (show) scrollToBottom();
 }
 
 function pillLabelFor(status) {
@@ -632,6 +640,7 @@ function renderTranscript({ scroll = true } = {}) {
   }
   schedulePersist();
   if (scroll && wasNearBottom) scrollToBottom(true);
+  updateTypingIndicator();
 }
 
 function scheduleTranscriptRender({ scroll = true } = {}) {
