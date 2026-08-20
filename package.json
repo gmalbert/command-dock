@@ -2,7 +2,7 @@
   "name": "command-dock",
   "displayName": "CommandDock",
   "description": "An independent, secure VS Code chat interface for the Command Code CLI.",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "publisher": "gmalbert",
   "license": "MIT",
   "engines": {
@@ -74,6 +74,13 @@
           "minimum": 1,
           "maximum": 500,
           "description": "Maximum agent turns for each Command Code request."
+        },
+        "commandDock.maxOutputLineBytes": {
+          "type": "number",
+          "default": 4194304,
+          "minimum": 1048576,
+          "maximum": 16777216,
+          "description": "Maximum size in bytes for a single line of Command Code CLI output. Increase this if you see 'output line exceeded the safety limit' errors. Default is 4 MB."
         },
         "commandDock.launchMode": {
           "type": "string",

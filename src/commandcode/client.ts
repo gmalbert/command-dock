@@ -25,6 +25,7 @@ export interface ClientRunOptions {
   generation: number;
   timeouts?: SupervisorTimeouts;
   maxEvents?: number;
+  maxOutputLineBytes?: number;
 }
 
 export interface ClientCallbacks {
@@ -54,7 +55,7 @@ export class CommandCodeClient {
   ): Promise<ClientRunResult> {
     if (this.child) throw new Error("CommandCode is already running.");
     this.cancelled = false;
-    const parser = new NdjsonParser();
+    const parser = new NdjsonParser(options.maxOutputLineBytes);
     const supervisor = new ProcessSupervisor(options.timeouts);
     this.supervisor = supervisor;
     let stderr = "";
