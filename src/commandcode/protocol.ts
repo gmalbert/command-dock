@@ -1,5 +1,5 @@
-export const DEFAULT_MAX_LINE_BYTES = 1024 * 1024;
-export const DEFAULT_MAX_BUFFER_BYTES = 2 * 1024 * 1024;
+export const DEFAULT_MAX_LINE_BYTES = 4 * 1024 * 1024;
+export const DEFAULT_MAX_BUFFER_BYTES = 8 * 1024 * 1024;
 
 export interface AgentEvent {
   type: string;

@@ -139,11 +139,20 @@ class CommandDockViewProvider {
             type: "permissionModeSelected",
             mode: this.permissionMode,
           });
-          await Promise.all([
-            this.postRepositoryState(),
-            this.postBackendStatus(),
-            this.postContextState(),
-          ]);
+          try {
+            await Promise.all([
+              this.postRepositoryState(),
+              this.postBackendStatus(),
+              this.postContextState(),
+            ]);
+          } catch (error) {
+            this.log("warn", `Ready handler error: ${error}`);
+            this.view?.webview.postMessage({
+              type: "backendStatus",
+              status: "error",
+              label: `CommandDock failed to initialize: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
           break;
         case "newChat":
           this.newChat();
@@ -263,6 +272,11 @@ class CommandDockViewProvider {
             message.effort,
           );
           break;
+      }
+    });
+    webviewView.onDidChangeViewState((event) => {
+      if (event.webviewPanel.visible && this.view) {
+        void this.postBackendStatus({ force: true });
       }
     });
   }
@@ -1633,6 +1647,13 @@ class CommandDockViewProvider {
 
     this.activeProcess = { generation: runGeneration };
     this.setRunActive(true);
+    const maxOutputLineBytes = Math.max(
+      1024 * 1024,
+      Math.min(
+        16 * 1024 * 1024,
+        config.get("maxOutputLineBytes", 4 * 1024 * 1024),
+      ),
+    );
     const result = await this.client.run(
       {
         invocation,
@@ -1640,6 +1661,7 @@ class CommandDockViewProvider {
         cwd: workspace,
         generation: runGeneration,
         env: createInvocationEnvironment(invocation),
+        maxOutputLineBytes,
       },
       {
         onFrame: (frame, generation) => {
@@ -1893,6 +1915,11 @@ class CommandDockViewProvider {
                 </div>
               </section>
               <section id="messages" class="messages" hidden></section>
+              <div id="typing-indicator" class="typing-indicator" hidden>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
               <section id="onboarding" class="onboarding" hidden>
                 <div class="mark"><img src="${logoUri}" alt="" /></div>
                 <div class="eyebrow">GET STARTED</div>
