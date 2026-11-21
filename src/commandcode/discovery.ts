@@ -230,6 +230,6 @@ function environmentValue(
   return match?.[1];
 }
 
-function pathForPlatform(platform: NodeJS.Platform): path.PlatformPath {
+function pathForPlatform(platform: NodeJS.Platform): typeof path.win32 {
   return platform === "win32" ? path.win32 : path.posix;
 }
