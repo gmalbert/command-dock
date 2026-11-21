@@ -8,6 +8,15 @@ updates:
     groups:
       development-dependencies:
         dependency-type: development
+    ignore:
+      # typescript-eslint peers require typescript <6.1.0; block TS 6/7 majors
+      # until typescript-eslint ships support for them.
+      - dependency-name: "typescript"
+        versions: ["6.x", "7.x"]
+      # The extension supports VS Code >=1.95 (engines field). Keep @types/vscode
+      # pinned to that floor; remove this when the engines floor is raised.
+      - dependency-name: "@types/vscode"
+        versions: [">1.95.0"]
     commit-message:
       prefix: deps
 
